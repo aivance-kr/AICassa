@@ -64,8 +64,8 @@ class AccountSeeder extends Seeder
             ];
         }
 
-        // 재실행 안전(멱등)
-        $this->db->table('accounts')->truncate();
+        // 재실행 안전(멱등). accounts는 FK로 참조되어 TRUNCATE 불가 → DELETE 사용
+        $this->db->table('accounts')->emptyTable();
         $this->db->table('accounts')->insertBatch($rows);
     }
 }

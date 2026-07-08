@@ -81,8 +81,8 @@ class DepreciationRateSeeder extends Seeder
         }
         unset($row);
 
-        // 재실행 안전(멱등): 기존 데이터 비우고 재삽입
-        $this->db->table('depreciation_rates')->truncate();
+        // 재실행 안전(멱등): 기존 데이터 비우고 재삽입 (DELETE, FK 안전)
+        $this->db->table('depreciation_rates')->emptyTable();
         $this->db->table('depreciation_rates')->insertBatch($rows);
     }
 }
