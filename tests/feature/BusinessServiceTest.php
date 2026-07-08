@@ -3,8 +3,9 @@
 use App\DTOs\BusinessData;
 use App\Exceptions\NotFoundException;
 use App\Exceptions\ValidationException;
-use App\Models\UserModel;
 use App\Services\BusinessService;
+use CodeIgniter\Shield\Entities\User;
+use CodeIgniter\Shield\Models\UserModel;
 use CodeIgniter\Test\CIUnitTestCase;
 use CodeIgniter\Test\DatabaseTestTrait;
 
@@ -29,8 +30,9 @@ final class BusinessServiceTest extends CIUnitTestCase
 
     private function makeUser(string $email): int
     {
-        $users = model(UserModel::class);
-        $users->insert(['email' => $email, 'password_hash' => 'x', 'name' => '홍길동']);
+        $users    = new UserModel();
+        $username = 'u' . substr(md5($email), 0, 8);
+        $users->save(new User(['username' => $username, 'email' => $email, 'password' => 'secret12345']));
 
         return (int) $users->getInsertID();
     }

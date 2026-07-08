@@ -11,6 +11,12 @@ parameters:
     excludePaths:
         analyse:
             - app/Views/*
-    scanDirectories:
-        - vendor/codeigniter4/framework/system
+            # Shield 가 발행한 설정 파일(서드파티 보일러플레이트 — 배열 타입 미지정)
+            - app/Config/Auth.php
+            - app/Config/AuthGroups.php
+            - app/Config/AuthToken.php
+    codeigniter:
+        # service('auth') 등 Shield 서비스 인식
+        additionalServices:
+            - CodeIgniter\Shield\Config\Services
     ignoreErrors: []

@@ -4,8 +4,9 @@ use App\DTOs\PartnerData;
 use App\Exceptions\AlreadyExistsException;
 use App\Exceptions\NotFoundException;
 use App\Models\BusinessModel;
-use App\Models\UserModel;
 use App\Services\PartnerService;
+use CodeIgniter\Shield\Entities\User;
+use CodeIgniter\Shield\Models\UserModel;
 use CodeIgniter\Test\CIUnitTestCase;
 use CodeIgniter\Test\DatabaseTestTrait;
 
@@ -29,8 +30,8 @@ final class PartnerServiceTest extends CIUnitTestCase
         parent::setUp();
         $this->service = new PartnerService();
 
-        $users = model(UserModel::class);
-        $users->insert(['email' => 'owner@test.com', 'password_hash' => 'x']);
+        $users = new UserModel();
+        $users->save(new User(['username' => 'owner1', 'email' => 'owner@test.com', 'password' => 'secret12345']));
         $this->userId = (int) $users->getInsertID();
 
         $businesses = model(BusinessModel::class);
@@ -56,8 +57,8 @@ final class PartnerServiceTest extends CIUnitTestCase
 
     public function testOperationOnUnownedBusinessThrows(): void
     {
-        $other  = model(UserModel::class);
-        $other->insert(['email' => 'other@test.com', 'password_hash' => 'x']);
+        $other = new UserModel();
+        $other->save(new User(['username' => 'other1', 'email' => 'other@test.com', 'password' => 'secret12345']));
         $otherId = (int) $other->getInsertID();
 
         $this->expectException(NotFoundException::class);

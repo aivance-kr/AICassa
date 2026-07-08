@@ -14,7 +14,8 @@ class CreateBusinesses extends Migration
     {
         $this->forge->addField([
             'id'               => ['type' => 'BIGINT', 'unsigned' => true, 'auto_increment' => true],
-            'user_id'          => ['type' => 'BIGINT', 'unsigned' => true],
+            // Shield users.id 는 INT UNSIGNED 이므로 FK 컬럼 타입을 일치시킨다
+            'user_id'          => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true],
             'name'             => ['type' => 'VARCHAR', 'constraint' => 200],
             'owner_name'       => ['type' => 'VARCHAR', 'constraint' => 100, 'null' => true],
             'birth_date'       => ['type' => 'DATE', 'null' => true],
