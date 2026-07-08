@@ -2,7 +2,9 @@
 
 namespace Config;
 
+use App\Services\BusinessService;
 use App\Services\DepreciationService;
+use App\Services\PartnerService;
 use App\Services\VatCalculatorService;
 use CodeIgniter\Config\BaseService;
 
@@ -43,5 +45,29 @@ class Services extends BaseService
         }
 
         return new DepreciationService();
+    }
+
+    /**
+     * 사업장 서비스.
+     */
+    public static function businessService(bool $getShared = true): BusinessService
+    {
+        if ($getShared) {
+            return static::getSharedInstance('businessService');
+        }
+
+        return new BusinessService();
+    }
+
+    /**
+     * 거래처 서비스.
+     */
+    public static function partnerService(bool $getShared = true): PartnerService
+    {
+        if ($getShared) {
+            return static::getSharedInstance('partnerService');
+        }
+
+        return new PartnerService();
     }
 }

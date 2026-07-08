@@ -124,3 +124,6 @@ _modules/*
 
 /results/
 /phpunit.xml
+
+# PHPStan(codeigniter 확장) 스키마 캐시
+/tmp/

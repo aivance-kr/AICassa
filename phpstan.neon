@@ -4,6 +4,8 @@ includes:
 parameters:
     phpVersion: 80400
     level: 6
+    bootstrapFiles:
+        - vendor/codeigniter4/framework/system/util_bootstrap.php
     paths:
         - app
     excludePaths:
