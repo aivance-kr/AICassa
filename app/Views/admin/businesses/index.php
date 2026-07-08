@@ -41,6 +41,7 @@ const gridOptions = {
             cellRenderer: p => {
                 const id = p.data.id;
                 return `<span class="actions-cell">`
+                    + `<a href="/admin/businesses/${id}/ledger">장부</a>`
                     + `<a href="/admin/businesses/${id}/partners">거래처</a>`
                     + `<a href="/admin/businesses/${id}/edit">수정</a>`
                     + `<a href="#" class="del" onclick="doDelete('/admin/businesses/${id}/delete');return false;">삭제</a>`

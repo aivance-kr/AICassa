@@ -28,5 +28,14 @@ $routes->group('admin', ['filter' => 'session'], static function ($routes): void
         $routes->get('(:num)/partners/(:num)/edit', 'Admin\PartnerController::edit/$1/$2');
         $routes->post('(:num)/partners/(:num)', 'Admin\PartnerController::update/$1/$2');
         $routes->post('(:num)/partners/(:num)/delete', 'Admin\PartnerController::delete/$1/$2');
+
+        // 장부(사업장 스코프 중첩)
+        $routes->get('(:num)/ledger', 'Admin\LedgerController::index/$1');
+        $routes->get('(:num)/ledger/new', 'Admin\LedgerController::new/$1');
+        $routes->post('(:num)/ledger', 'Admin\LedgerController::create/$1');
+        $routes->get('(:num)/ledger/(:num)/edit', 'Admin\LedgerController::edit/$1/$2');
+        $routes->post('(:num)/ledger/(:num)', 'Admin\LedgerController::update/$1/$2');
+        $routes->post('(:num)/ledger/(:num)/delete', 'Admin\LedgerController::delete/$1/$2');
+        $routes->post('(:num)/ledger/(:num)/copy', 'Admin\LedgerController::copy/$1/$2');
     });
 });

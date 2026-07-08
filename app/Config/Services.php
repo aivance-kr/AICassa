@@ -4,6 +4,7 @@ namespace Config;
 
 use App\Services\BusinessService;
 use App\Services\DepreciationService;
+use App\Services\LedgerService;
 use App\Services\PartnerService;
 use App\Services\VatCalculatorService;
 use CodeIgniter\Config\BaseService;
@@ -69,5 +70,17 @@ class Services extends BaseService
         }
 
         return new PartnerService();
+    }
+
+    /**
+     * 장부 서비스.
+     */
+    public static function ledgerService(bool $getShared = true): LedgerService
+    {
+        if ($getShared) {
+            return static::getSharedInstance('ledgerService');
+        }
+
+        return new LedgerService();
     }
 }
