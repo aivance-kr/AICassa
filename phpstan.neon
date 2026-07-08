@@ -1,0 +1,14 @@
+includes:
+    - vendor/codeigniter/phpstan-codeigniter/extension.neon
+
+parameters:
+    phpVersion: 80400
+    level: 6
+    paths:
+        - app
+    excludePaths:
+        analyse:
+            - app/Views/*
+    scanDirectories:
+        - vendor/codeigniter4/framework/system
+    ignoreErrors: []
