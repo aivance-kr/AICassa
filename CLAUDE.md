@@ -211,6 +211,17 @@ feature/* → (PR) → dev → (PR) → main
   - dev → main 을 Squash 하면 main 이 dev 조상에서 이탈해 이후 배포마다 3-way 충돌이 재발한다. 반드시 merge commit 으로 main 을 dev 의 조상으로 유지한다.
 - `main`·`dev` 직접 push 금지
 
+---
+
+## CI / CD (GitHub Actions)
+- **CI** (`.github/workflows/ci.yml`): `dev`·`main`·`feature/**` push + PR 시 실행. mysql:8.0 서비스에서 **PHP CS Fixer → PHPStan(level6) → PHPUnit** 순차.
+- **CD** (`.github/workflows/deploy.yml`): `main` push(= dev→main PR 머지) + 수동(`workflow_dispatch`) 시 SSH 배포. 동시성 `deploy-production`(1개, 중단 안 함).
+  - 서버 절차: `git reset --hard origin/main` → `writable/` 생성(마이그레이션 전 필수) → `composer install --no-dev` → `spark migrate --all -f`(출력 예외 감지 시 중단) → `cache:clear` → `systemctl reload apache2`(무중단).
+  - ⚠️ `spark migrate`는 실패해도 종료코드 0 → 출력에서 예외 패턴 검사로 중단 판정.
+  - **시더는 자동 실행 안 함**(참조 데이터는 최초 1회 수동): `php spark db:seed ReferenceDataSeeder`.
+- **필요 GitHub Secrets**(production 환경): `DEPLOY_HOST` · `DEPLOY_USER` · `DEPLOY_SSH_KEY` · `DEPLOY_PORT` · `DEPLOY_PATH`.
+- **서버 사전 준비(1회)**: 읽기전용 deploy key(SSH 리모트), 운영 `.env`(실 DB 접속정보), 비밀번호 없는 sudo(`systemctl reload apache2`), DocumentRoot=`public/`, `writable/` www-data 쓰기권한(권장 `chmod 2775` setgid).
+
 ### 기능 개발 시작
 ```bash
 git checkout dev && git pull origin dev
