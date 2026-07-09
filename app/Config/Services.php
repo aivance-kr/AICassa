@@ -9,6 +9,7 @@ use App\Services\LedgerImportService;
 use App\Services\LedgerService;
 use App\Services\PartnerService;
 use App\Services\SummaryService;
+use App\Services\TaxFormService;
 use App\Services\VatCalculatorService;
 use CodeIgniter\Config\BaseService;
 
@@ -121,5 +122,17 @@ class Services extends BaseService
         }
 
         return new AssetService();
+    }
+
+    /**
+     * 종합소득세 신고서식 서비스.
+     */
+    public static function taxFormService(bool $getShared = true): TaxFormService
+    {
+        if ($getShared) {
+            return static::getSharedInstance('taxFormService');
+        }
+
+        return new TaxFormService();
     }
 }
