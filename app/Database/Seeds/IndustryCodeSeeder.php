@@ -20,6 +20,11 @@ class IndustryCodeSeeder extends Seeder
      */
     private const CHUNK_SIZE = 500;
 
+    /**
+     * 원본 연계표의 시행연도(기준선)
+     */
+    private const BASELINE_YEAR = 2023;
+
     public function run(): void
     {
         /** @var list<array{0:string, 1:string, 2:int|null}> $defs */
@@ -30,16 +35,18 @@ class IndustryCodeSeeder extends Seeder
 
         foreach ($defs as [$code, $name, $usefulLife]) {
             $rows[] = [
-                'code'        => $code,
-                'name'        => $name,
-                'useful_life' => $usefulLife,
-                'created_at'  => $now,
-                'updated_at'  => $now,
+                'code'           => $code,
+                'effective_year' => self::BASELINE_YEAR,
+                'name'           => $name,
+                'useful_life'    => $usefulLife,
+                'created_at'     => $now,
+                'updated_at'     => $now,
             ];
         }
 
-        // 재실행 안전(멱등): 기존 데이터 비우고 재삽입
-        $this->db->table('industry_codes')->emptyTable();
+        // 기준선(2023) 재실행 안전(멱등): 해당 시행연도 행만 비우고 재삽입한다.
+        // 다른 시행연도(개정 세법) 행은 보존한다.
+        $this->db->table('industry_codes')->where('effective_year', self::BASELINE_YEAR)->delete();
 
         foreach (array_chunk($rows, self::CHUNK_SIZE) as $chunk) {
             $this->db->table('industry_codes')->insertBatch($chunk);
