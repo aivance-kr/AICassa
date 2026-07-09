@@ -58,6 +58,48 @@ final class AssetServiceTest extends CIUnitTestCase
         $this->assertEqualsWithDelta(0.2, (float) $asset['depreciation_rate'], 0.0001);
     }
 
+    public function testCreateResolvesUsefulLifeFromIndustryCode(): void
+    {
+        // 업종코드 143107 → 내용연수 10 (표준산업분류연계표)
+        $businesses = model(BusinessModel::class);
+        $businesses->insert(['user_id' => $this->userId, 'name' => '광업사', 'industry_code' => '143107']);
+        $bizId = (int) $businesses->getInsertID();
+
+        // 내용연수 미입력 → 사업장 업종코드로 자동 조회
+        $id = $this->service->create($this->userId, $bizId, new AssetData(
+            assetType: '기계장치',
+            name: '채굴기',
+            acquiredAt: '2024-01-01',
+            acquisitionCost: 10_000_000,
+            depreciationMethod: DepreciationMethod::StraightLine,
+        ));
+        $asset = $this->service->get($this->userId, $bizId, $id);
+
+        $this->assertSame(10, (int) $asset['useful_life']);                       // 자동 조회된 내용연수
+        $this->assertEqualsWithDelta(0.1, (float) $asset['depreciation_rate'], 0.0001); // 정액법 10년 → 0.1
+    }
+
+    public function testExplicitUsefulLifeOverridesIndustryCode(): void
+    {
+        $businesses = model(BusinessModel::class);
+        $businesses->insert(['user_id' => $this->userId, 'name' => '광업사', 'industry_code' => '143107']); // 업종 내용연수 10
+        $bizId = (int) $businesses->getInsertID();
+
+        // 입력값(5)이 업종코드(10)보다 우선
+        $id = $this->service->create($this->userId, $bizId, new AssetData(
+            assetType: '비품',
+            name: '노트북',
+            acquiredAt: '2024-01-01',
+            acquisitionCost: 10_000_000,
+            depreciationMethod: DepreciationMethod::StraightLine,
+            usefulLife: 5,
+        ));
+        $asset = $this->service->get($this->userId, $bizId, $id);
+
+        $this->assertSame(5, (int) $asset['useful_life']);
+        $this->assertEqualsWithDelta(0.2, (float) $asset['depreciation_rate'], 0.0001); // 정액법 5년 → 0.2
+    }
+
     public function testScheduleStraightLine(): void
     {
         $id = $this->service->create($this->userId, $this->businessId, new AssetData(

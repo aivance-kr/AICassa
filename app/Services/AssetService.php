@@ -14,6 +14,7 @@ use App\Models\AccountModel;
 use App\Models\AssetModel;
 use App\Models\BusinessModel;
 use App\Models\DepreciationRateModel;
+use App\Models\IndustryCodeModel;
 use App\Models\LedgerEntryModel;
 
 /**
@@ -25,6 +26,7 @@ final class AssetService
     private AssetModel $assets;
     private BusinessModel $businesses;
     private DepreciationRateModel $rates;
+    private IndustryCodeModel $industryCodes;
     private AccountModel $accounts;
     private LedgerEntryModel $ledgerEntries;
     private DepreciationService $depreciation;
@@ -34,6 +36,7 @@ final class AssetService
         ?AssetModel $assets = null,
         ?BusinessModel $businesses = null,
         ?DepreciationRateModel $rates = null,
+        ?IndustryCodeModel $industryCodes = null,
         ?AccountModel $accounts = null,
         ?LedgerEntryModel $ledgerEntries = null,
         ?DepreciationService $depreciation = null,
@@ -42,6 +45,7 @@ final class AssetService
         $this->assets        = $assets ?? model(AssetModel::class);
         $this->businesses    = $businesses ?? model(BusinessModel::class);
         $this->rates         = $rates ?? model(DepreciationRateModel::class);
+        $this->industryCodes = $industryCodes ?? model(IndustryCodeModel::class);
         $this->accounts      = $accounts ?? model(AccountModel::class);
         $this->ledgerEntries = $ledgerEntries ?? model(LedgerEntryModel::class);
         $this->depreciation  = $depreciation ?? new DepreciationService();
@@ -82,9 +86,9 @@ final class AssetService
     {
         $this->assertOwned($userId, $businessId);
 
-        $row                      = $data->toDatabaseArray();
-        $row['business_id']       = $businessId;
-        $row['depreciation_rate'] = $this->resolveRate($data);
+        $row                = $data->toDatabaseArray();
+        $row['business_id'] = $businessId;
+        $row                = $this->resolveDepreciation($businessId, $data, $row);
 
         if (! $this->assets->insert($row)) {
             throw new ValidationException($this->assets->errors());
@@ -108,8 +112,8 @@ final class AssetService
     {
         $this->get($userId, $businessId, $assetId);
 
-        $row                      = $data->toDatabaseArray();
-        $row['depreciation_rate'] = $this->resolveRate($data);
+        $row = $data->toDatabaseArray();
+        $row = $this->resolveDepreciation($businessId, $data, $row);
 
         if (! $this->assets->update($assetId, $row)) {
             throw new ValidationException($this->assets->errors());
@@ -126,6 +130,16 @@ final class AssetService
         $this->get($userId, $businessId, $assetId);
         $this->removeLedgerEntries($businessId, $assetId); // 연동 전표(구입/매각/감가상각) 제거
         $this->assets->delete($assetId);
+    }
+
+    /**
+     * 사업장 주업종코드 기준 기본 내용연수(자산 등록 폼 안내용). 없으면 null.
+     */
+    public function defaultUsefulLife(int $userId, int $businessId): ?int
+    {
+        $this->assertOwned($userId, $businessId);
+
+        return $this->industryUsefulLife($businessId);
     }
 
     /**
@@ -358,15 +372,43 @@ final class AssetService
     }
 
     /**
-     * 상각방법 + 내용연수로 상각률을 조회한다(둘 중 하나라도 없으면 null).
+     * 저장용 행에 유효 내용연수와 상각률을 채운다.
+     *
+     * 내용연수는 입력값을 우선하고, 없으면 사업장 주업종코드로 자동 조회한다
+     * (원본 fGet내용연수: 표준산업분류연계표에서 업종별 자산 내용연수 조회).
+     * 상각방법·내용연수가 모두 확정돼야 상각률을 조회한다.
+     *
+     * @param array<string, mixed> $row
+     *
+     * @return array<string, mixed>
      */
-    private function resolveRate(AssetData $data): ?float
+    private function resolveDepreciation(int $businessId, AssetData $data, array $row): array
     {
-        if ($data->depreciationMethod === null || $data->usefulLife === null) {
+        $usefulLife = $data->usefulLife ?? $this->industryUsefulLife($businessId);
+
+        $rate = null;
+        if ($data->depreciationMethod !== null && $usefulLife !== null) {
+            $rate = $this->rates->rateFor($data->depreciationMethod, $usefulLife);
+        }
+
+        $row['useful_life']       = $usefulLife;
+        $row['depreciation_rate'] = $rate;
+
+        return $row;
+    }
+
+    /**
+     * 사업장 주업종코드로 업종별 자산 내용연수를 조회한다(없으면 null).
+     */
+    private function industryUsefulLife(int $businessId): ?int
+    {
+        $business = $this->businesses->find($businessId);
+        $code     = $business['industry_code'] ?? null;
+        if ($code === null || $code === '') {
             return null;
         }
 
-        return $this->rates->rateFor($data->depreciationMethod, $data->usefulLife);
+        return $this->industryCodes->usefulLifeFor((string) $code);
     }
 
     private function assertOwned(int $userId, int $businessId): void

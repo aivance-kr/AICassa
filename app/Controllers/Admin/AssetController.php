@@ -168,6 +168,8 @@ class AssetController extends BaseAdminController
             'asset'      => $asset,
             'assetTypes' => model(AccountModel::class)->forCategory(AccountCategory::Asset),
             'methods'    => DepreciationMethod::cases(),
+            // 내용연수 미입력 시 적용될 업종 기준 기본값(폼 안내용)
+            'autoUsefulLife' => service('assetService')->defaultUsefulLife($this->authUserId(), (int) $business['id']),
         ];
     }
 

@@ -47,6 +47,36 @@ final class AdminAssetFlowTest extends CIUnitTestCase
         $this->get("/admin/businesses/{$this->businessId}/assets")->assertRedirect();
     }
 
+    public function testFormShowsIndustryBasedUsefulLifeHint(): void
+    {
+        // 업종코드 143107 → 내용연수 10 (표준산업분류연계표)
+        model(BusinessModel::class)->update($this->businessId, ['industry_code' => '143107']);
+
+        $res = $this->actingAs($this->user)->get("/admin/businesses/{$this->businessId}/assets/new");
+        $res->assertOK();
+        $res->assertSee('업종 기준 자동');
+        $res->assertSee('143107');
+    }
+
+    public function testCreateResolvesUsefulLifeFromIndustryWhenOmitted(): void
+    {
+        model(BusinessModel::class)->update($this->businessId, ['industry_code' => '143107']); // 내용연수 10
+
+        // 내용연수 미입력으로 등록 → 업종 기준 자동 적용
+        $this->actingAs($this->user)->post("/admin/businesses/{$this->businessId}/assets", [
+            'asset_type'          => '기계장치',
+            'name'                => '채굴기',
+            'acquired_at'         => '2024-01-01',
+            'acquisition_cost'    => '10,000,000',
+            'depreciation_method' => 'straight_line',
+            'useful_life'         => '',
+        ])->assertRedirectTo("/admin/businesses/{$this->businessId}/assets");
+
+        $assets = (new AssetService())->listForBusiness((int) $this->user->id, $this->businessId);
+        $this->assertSame(10, (int) $assets[0]['useful_life']);
+        $this->assertEqualsWithDelta(0.1, (float) $assets[0]['depreciation_rate'], 0.0001); // 정액법 10년 → 0.1
+    }
+
     public function testCreateAndScheduleThenPost(): void
     {
         // 자산 등록(정액법 5년)

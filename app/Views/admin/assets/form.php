@@ -40,8 +40,17 @@
     </select>
 
     <label for="useful_life">내용연수(년)</label>
-    <input type="number" id="useful_life" name="useful_life" min="2" max="60" value="<?= esc($val('useful_life')) ?>">
-    <p class="muted" style="margin-top:4px;">상각방법과 내용연수를 입력하면 상각률이 자동 조회됩니다.</p>
+    <input type="number" id="useful_life" name="useful_life" min="2" max="60"
+           value="<?= esc($val('useful_life')) ?>"
+           <?= $autoUsefulLife !== null ? 'placeholder="' . esc('업종 기준 자동 · ' . $autoUsefulLife . '년', 'attr') . '"' : '' ?>>
+    <p class="muted" style="margin-top:4px;">
+        상각방법을 선택하면 내용연수로 상각률이 자동 조회됩니다.
+        <?php if ($autoUsefulLife !== null): ?>
+            비워 두면 사업장 업종코드(<?= esc($business['industry_code']) ?>) 기준 <strong><?= esc((string) $autoUsefulLife) ?>년</strong>이 자동 적용됩니다.
+        <?php else: ?>
+            사업장 업종코드가 없으면 내용연수를 직접 입력해야 합니다.
+        <?php endif; ?>
+    </p>
 
     <label for="disposed_at">처분일(선택)</label>
     <input type="date" id="disposed_at" name="disposed_at" value="<?= esc($val('disposed_at')) ?>">
