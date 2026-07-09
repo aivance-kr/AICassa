@@ -2,6 +2,7 @@
 
 namespace Config;
 
+use App\Services\AssetService;
 use App\Services\BusinessService;
 use App\Services\DepreciationService;
 use App\Services\LedgerImportService;
@@ -108,5 +109,17 @@ class Services extends BaseService
         }
 
         return new SummaryService();
+    }
+
+    /**
+     * 자산대장·감가상각 서비스.
+     */
+    public static function assetService(bool $getShared = true): AssetService
+    {
+        if ($getShared) {
+            return static::getSharedInstance('assetService');
+        }
+
+        return new AssetService();
     }
 }

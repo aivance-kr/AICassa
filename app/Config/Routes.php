@@ -42,5 +42,15 @@ $routes->group('admin', ['filter' => 'session'], static function ($routes): void
 
         // 리포트 — 영업현황표
         $routes->get('(:num)/reports/business-status', 'Admin\ReportController::businessStatus/$1');
+
+        // 자산대장 · 감가상각
+        $routes->get('(:num)/assets', 'Admin\AssetController::index/$1');
+        $routes->get('(:num)/assets/new', 'Admin\AssetController::new/$1');
+        $routes->post('(:num)/assets', 'Admin\AssetController::create/$1');
+        $routes->get('(:num)/assets/(:num)/edit', 'Admin\AssetController::edit/$1/$2');
+        $routes->post('(:num)/assets/(:num)', 'Admin\AssetController::update/$1/$2');
+        $routes->post('(:num)/assets/(:num)/delete', 'Admin\AssetController::delete/$1/$2');
+        $routes->get('(:num)/assets/(:num)/schedule', 'Admin\AssetController::schedule/$1/$2');
+        $routes->post('(:num)/assets/(:num)/depreciation', 'Admin\AssetController::postDepreciation/$1/$2');
     });
 });

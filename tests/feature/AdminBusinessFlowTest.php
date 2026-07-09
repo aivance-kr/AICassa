@@ -7,6 +7,7 @@ use CodeIgniter\Shield\Test\AuthenticationTesting;
 use CodeIgniter\Test\CIUnitTestCase;
 use CodeIgniter\Test\DatabaseTestTrait;
 use CodeIgniter\Test\FeatureTestTrait;
+use Config\Services;
 
 /**
  * Admin 사업장 화면 — 인증·라우팅·컨트롤러 동작 통합 검증.
@@ -23,6 +24,12 @@ final class AdminBusinessFlowTest extends CIUnitTestCase
     use AuthenticationTesting;
 
     protected $namespace;
+
+    protected function setUp(): void
+    {
+        Services::reset(); // Shield 인증/세션 상태 격리(테스트 순서 의존 방지)
+        parent::setUp();
+    }
 
     private function makeUser(): User
     {
