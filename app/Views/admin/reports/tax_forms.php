@@ -4,6 +4,7 @@
 <?php
     $bid   = $business['id'];
     $inv   = $statement['inventory'];
+    $mfg   = $statement['manufacturing'];
     $money = static fn (int $n): string => number_format($n);
     $methodLabel = static fn (?string $v): string => match ($v) {
         'straight_line'     => '정액법',
@@ -32,11 +33,27 @@
     <a href="/admin/businesses/<?= $bid ?>/reports/tax-forms/print?fiscal_year=<?= (int) $year ?>" class="btn" target="_blank" rel="noopener">인쇄 (PDF)</a>
     <a href="/admin/businesses/<?= $bid ?>/reports/tax-forms/excel?fiscal_year=<?= (int) $year ?>" class="btn secondary">엑셀 다운로드</a>
     <a href="/admin/businesses/<?= $bid ?>/ledger" class="btn secondary">장부</a>
-    <a href="/admin/businesses" class="btn secondary">← 사업장 목록</a>
 </div>
 
-<!-- 재고 입력(매출원가 계산용) -->
-<h2 style="font-size:16px; margin-top:8px;">재고 입력 <span class="muted" style="font-weight:400; font-size:13px;">(매출원가 계산)</span></h2>
+<!-- 인적사항 -->
+<h2 style="font-size:16px;">인적사항</h2>
+<table class="tbl" style="margin-bottom:20px;">
+    <tbody>
+        <tr><th style="width:15%;">성명</th><td style="width:35%;"><?= esc($business['owner_name'] ?? '') ?></td>
+            <th style="width:15%;">생년월일</th><td><?= esc($business['birth_date'] ?? '') ?></td></tr>
+        <tr><th>상호</th><td><?= esc($business['name']) ?></td>
+            <th>사업자등록번호</th><td><?= esc($business['biz_reg_no'] ?? '') ?></td></tr>
+        <tr><th>소재지</th><td><?= esc($business['address'] ?? '') ?></td>
+            <th>전화번호</th><td><?= esc($business['phone'] ?? '') ?></td></tr>
+        <tr><th>업종</th><td><?= esc($business['industry_name'] ?? '') ?></td>
+            <th>주업종코드</th><td><?= esc($business['industry_code'] ?? '') ?></td></tr>
+        <tr><th>소득종류</th><td><?= esc($business['income_type'] ?? '') ?></td>
+            <th>제조업 여부</th><td><?= ((int) ($business['is_manufacturing'] ?? 0)) === 1 ? '예' : '아니오' ?></td></tr>
+    </tbody>
+</table>
+
+<!-- 재고 입력 -->
+<h2 style="font-size:16px;">재고 입력 <span class="muted" style="font-weight:400; font-size:13px;">(매출원가 계산)</span></h2>
 <form class="card" method="post" action="/admin/businesses/<?= $bid ?>/reports/tax-forms/inventory">
     <?= csrf_field() ?>
     <input type="hidden" name="fiscal_year" value="<?= (int) $year ?>">
@@ -49,27 +66,54 @@
     <div class="actions"><button type="submit" class="btn secondary">재고 저장</button></div>
 </form>
 
-<!-- ① 간편장부 소득금액계산서 -->
+<!-- 세무조정 입력 -->
+<h2 style="font-size:16px;">세무조정 입력 <span class="muted" style="font-weight:400; font-size:13px;">(장부금액에 대한 가산·제외)</span></h2>
+<form class="card" method="post" action="/admin/businesses/<?= $bid ?>/reports/tax-forms/adjustments">
+    <?= csrf_field() ?>
+    <input type="hidden" name="fiscal_year" value="<?= (int) $year ?>">
+    <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px;">
+        <div><label>⑫ 수입에서 제외</label><input type="text" name="revenue_exclude" inputmode="numeric" value="<?= $money($adjustments['revenue_exclude']) ?>"></div>
+        <div><label>⑬ 수입에 가산</label><input type="text" name="revenue_add" inputmode="numeric" value="<?= $money($adjustments['revenue_add']) ?>"></div>
+        <div></div>
+        <div><label>⑯ 필요경비에서 제외</label><input type="text" name="expense_exclude" inputmode="numeric" value="<?= $money($adjustments['expense_exclude']) ?>"></div>
+        <div><label>⑰ 필요경비에 가산</label><input type="text" name="expense_add" inputmode="numeric" value="<?= $money($adjustments['expense_add']) ?>"></div>
+        <div></div>
+        <div><label>⑳ 기부금 한도초과액</label><input type="text" name="donation_over" inputmode="numeric" value="<?= $money($adjustments['donation_over']) ?>"></div>
+        <div><label>㉑ 기부금이월액 중 산입액</label><input type="text" name="donation_carryover" inputmode="numeric" value="<?= $money($adjustments['donation_carryover']) ?>"></div>
+        <div></div>
+    </div>
+    <div class="actions"><button type="submit" class="btn secondary">세무조정 저장</button></div>
+</form>
+
+<!-- ① 소득금액계산서 -->
 <h2 style="font-size:16px;">① 간편장부 소득금액계산서</h2>
 <table class="tbl" style="margin-bottom:24px;">
     <tbody>
-        <tr><th style="width:40%;">총수입금액</th><td class="num"><?= $money($statement['total_revenue']) ?></td></tr>
-        <tr><th>필요경비</th><td class="num"><?= $money($statement['necessary_expense']) ?></td></tr>
-        <tr class="total"><th>소득금액 (총수입금액 − 필요경비)</th><td class="num"><strong><?= $money($statement['income_amount']) ?></strong></td></tr>
+        <tr><th style="width:60%;">⑪ 장부상 수입금액</th><td class="num"><?= $money($statement['total_revenue']) ?></td></tr>
+        <tr><th>⑫ 수입금액에서 제외할 금액</th><td class="num"><?= $money($statement['revenue_exclude']) ?></td></tr>
+        <tr><th>⑬ 수입금액에 가산할 금액</th><td class="num"><?= $money($statement['revenue_add']) ?></td></tr>
+        <tr><th>⑭ 세무조정 후 수입금액 (⑪−⑫+⑬)</th><td class="num"><?= $money($statement['adjusted_revenue']) ?></td></tr>
+        <tr><th>⑮ 장부상 필요경비</th><td class="num"><?= $money($statement['necessary_expense']) ?></td></tr>
+        <tr><th>⑯ 필요경비에서 제외할 금액</th><td class="num"><?= $money($statement['expense_exclude']) ?></td></tr>
+        <tr><th>⑰ 필요경비에 가산할 금액</th><td class="num"><?= $money($statement['expense_add']) ?></td></tr>
+        <tr><th>⑱ 세무조정 후 필요경비 (⑮−⑯+⑰)</th><td class="num"><?= $money($statement['adjusted_expense']) ?></td></tr>
+        <tr><th>⑲ 차가감 소득금액 (⑭−⑱)</th><td class="num"><?= $money($statement['pre_income']) ?></td></tr>
+        <tr><th>⑳ 기부금 한도초과액</th><td class="num"><?= $money($statement['donation_over']) ?></td></tr>
+        <tr><th>㉑ 기부금이월액 중 필요경비산입액</th><td class="num"><?= $money($statement['donation_carryover']) ?></td></tr>
+        <tr class="total"><th>㉒ 당해연도 소득금액 (⑲+⑳−㉑)</th><td class="num"><strong><?= $money($statement['income_amount']) ?></strong></td></tr>
     </tbody>
 </table>
 
-<!-- ② 총수입금액 및 필요경비명세서 -->
+<!-- ② 총수입금액 및 필요경비명세서(부표) -->
 <h2 style="font-size:16px;">② 총수입금액 및 필요경비명세서</h2>
 <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px;">
     <div>
-        <h3 style="font-size:14px; color:var(--muted);">수입</h3>
+        <h3 style="font-size:14px; color:var(--muted);">수입금액</h3>
         <table class="tbl">
             <tbody>
-            <?php foreach ($statement['revenue_by_account'] as $name => $amt): ?>
-                <tr><th><?= esc($name) ?></th><td class="num"><?= $money($amt) ?></td></tr>
-            <?php endforeach; ?>
-            <tr class="total"><th>계</th><td class="num"><?= $money($statement['total_revenue']) ?></td></tr>
+            <tr><th>⑪ 매출액</th><td class="num"><?= $money($statement['revenue_by_account']['매출'] ?? 0) ?></td></tr>
+            <tr><th>⑫ 기타</th><td class="num"><?= $money($statement['revenue_by_account']['기타(수입)'] ?? 0) ?></td></tr>
+            <tr class="total"><th>⑬ 수입금액 합계</th><td class="num"><?= $money($statement['total_revenue']) ?></td></tr>
             </tbody>
         </table>
     </div>
@@ -77,17 +121,18 @@
         <h3 style="font-size:14px; color:var(--muted);">필요경비</h3>
         <table class="tbl">
             <tbody>
-            <tr><th>매출원가(상품)</th><td class="num"><?= $money($statement['goods_cogs']) ?></td></tr>
-            <?php if ($statement['materials_cost'] !== 0): ?>
-                <tr><th>재료비</th><td class="num"><?= $money($statement['materials_cost']) ?></td></tr>
+            <tr><th>⑰ 매출원가(상품)</th><td class="num"><?= $money($statement['goods_cogs']) ?></td></tr>
+            <?php if ($mfg['total'] !== 0): ?>
+                <tr><th>㉑ 재료비</th><td class="num"><?= $money($mfg['materials']) ?></td></tr>
+                <tr><th>㉒ 노무비</th><td class="num"><?= $money($mfg['labor']) ?></td></tr>
+                <tr><th>㉓ 경비</th><td class="num"><?= $money($mfg['overhead']) ?></td></tr>
+                <tr><th>㉔ 당기제조비용 (㉑+㉒+㉓)</th><td class="num"><?= $money($mfg['total']) ?></td></tr>
             <?php endif; ?>
-            <?php foreach ($statement['expense_by_account'] as $name => $amt): ?>
-                <?php if (in_array($name, ['상품매입', '재료매입'], true)) {
-                    continue;
-                } ?>
-                <tr><th><?= esc($name) ?></th><td class="num"><?= $money($amt) ?></td></tr>
+            <?php foreach ($statement['general_admin'] as $row): ?>
+                <tr><th><?= esc($row['name']) ?></th><td class="num"><?= $money($row['amount']) ?></td></tr>
             <?php endforeach; ?>
-            <tr class="total"><th>계</th><td class="num"><?= $money($statement['necessary_expense']) ?></td></tr>
+            <tr><th>㊵ 일반관리비 등 계</th><td class="num"><?= $money($statement['general_admin_total']) ?></td></tr>
+            <tr class="total"><th>㊶ 필요경비 합계</th><td class="num"><?= $money($statement['necessary_expense']) ?></td></tr>
             </tbody>
         </table>
     </div>

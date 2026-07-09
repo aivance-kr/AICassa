@@ -18,8 +18,14 @@
     <label for="owner_name">대표자명</label>
     <input type="text" id="owner_name" name="owner_name" value="<?= esc($val('owner_name')) ?>">
 
+    <label for="birth_date">생년월일</label>
+    <input type="date" id="birth_date" name="birth_date" value="<?= esc($val('birth_date')) ?>">
+
     <label for="biz_reg_no">사업자등록번호</label>
     <input type="text" id="biz_reg_no" name="biz_reg_no" value="<?= esc($val('biz_reg_no')) ?>" placeholder="123-45-67890">
+
+    <label for="income_type">소득종류</label>
+    <input type="text" id="income_type" name="income_type" value="<?= esc($val('income_type')) ?>" placeholder="사업소득 / 부동산임대 등">
 
     <label for="industry_name">업종</label>
     <input type="text" id="industry_name" name="industry_name" value="<?= esc($val('industry_name')) ?>">
