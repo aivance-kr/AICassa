@@ -2,11 +2,11 @@
 
 <?= $this->section('content') ?>
 <?php $bid = $business['id']; ?>
-<h1>거래처 <span class="muted">— <?= esc($business['name']) ?></span></h1>
+<h1>거래처</h1>
+<p class="page-desc">장부 거래에 사용할 거래처(상호·사업자등록번호)를 관리합니다. CSV로 한 번에 등록할 수 있습니다.</p>
 <div class="toolbar">
     <a href="/admin/businesses/<?= $bid ?>/partners/new" class="btn">+ 거래처 등록</a>
     <a href="/admin/businesses/<?= $bid ?>/partners/import" class="btn secondary">CSV 일괄 업로드</a>
-    <a href="/admin/businesses" class="btn secondary">← 사업장 목록</a>
 </div>
 
 <?php if ($partners === []): ?>

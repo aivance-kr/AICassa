@@ -17,7 +17,8 @@
              . '<td class="num muted">' . $money($b['asset_vat']) . '</td>';
     };
 ?>
-<h1>영업현황표 <span class="muted">— <?= esc($business['name']) ?> · <?= (int) $year ?>년</span></h1>
+<h1>영업현황표 <span class="muted">— <?= (int) $year ?>년</span></h1>
+<p class="page-desc">장부 데이터를 월별·분기별·연간으로 집계한 표와 차트입니다. 수입·비용 추이를 한눈에 확인합니다.</p>
 
 <div class="toolbar">
     <form method="get" style="display:flex; gap:8px; align-items:center;">
@@ -31,8 +32,6 @@
             <?php endforeach; ?>
         </select>
     </form>
-    <a href="/admin/businesses/<?= $bid ?>/ledger" class="btn secondary">장부</a>
-    <a href="/admin/businesses" class="btn secondary">← 사업장 목록</a>
 </div>
 
 <style>
@@ -94,8 +93,8 @@ new Chart(document.getElementById('chart'), {
     data: {
         labels: MONTHS,
         datasets: [
-            { label: '수입', data: INCOME, backgroundColor: '#0F6E56' },
-            { label: '비용', data: EXPENSE, backgroundColor: '#1D9E75' },
+            { label: '수입', data: INCOME, backgroundColor: '#2563EB' },
+            { label: '비용', data: EXPENSE, backgroundColor: '#93C5FD' },
         ],
     },
     options: {

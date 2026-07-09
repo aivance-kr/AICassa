@@ -2,16 +2,12 @@
 
 <?= $this->section('content') ?>
 <?php $bid = $business['id']; ?>
-<h1>장부 <span class="muted">— <?= esc($business['name']) ?></span></h1>
+<h1>장부</h1>
+<p class="page-desc">일자별 수입·비용 거래를 입력·관리합니다. 증빙유형에 따라 부가세가 자동 계산됩니다.</p>
 
 <div class="toolbar">
     <a href="/admin/businesses/<?= $bid ?>/ledger/new" class="btn">+ 거래 입력</a>
     <a href="/admin/businesses/<?= $bid ?>/ledger/import" class="btn secondary">CSV 일괄 업로드</a>
-    <a href="/admin/businesses/<?= $bid ?>/reports/business-status" class="btn secondary">영업현황표</a>
-    <a href="/admin/businesses/<?= $bid ?>/reports/tax-forms" class="btn secondary">신고서식</a>
-    <a href="/admin/businesses/<?= $bid ?>/assets" class="btn secondary">자산대장</a>
-    <a href="/admin/businesses/<?= $bid ?>/partners" class="btn secondary">거래처</a>
-    <a href="/admin/businesses" class="btn secondary">← 사업장 목록</a>
 </div>
 
 <form method="get" class="filter" style="display:flex; gap:8px; align-items:end; flex-wrap:wrap; margin-bottom:16px;">

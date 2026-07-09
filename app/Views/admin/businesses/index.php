@@ -2,6 +2,7 @@
 
 <?= $this->section('content') ?>
 <h1>사업장</h1>
+<p class="page-desc">간편장부는 사업장별로 작성합니다. 사업장을 선택하면 장부·거래처·자산대장·영업현황표·신고서식으로 이동할 수 있습니다.</p>
 <div class="toolbar">
     <a href="/admin/businesses/new" class="btn">+ 사업장 등록</a>
 </div>
