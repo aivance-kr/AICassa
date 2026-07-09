@@ -11,6 +11,9 @@ service('auth')->routes($routes);
 $routes->group('admin', ['filter' => 'session'], static function ($routes): void {
     $routes->get('', 'Admin\BusinessController::index');
 
+    // 업종코드 검색(사업장 폼 자동완성용 · 참조 데이터)
+    $routes->get('industry-codes/search', 'Admin\IndustryCodeController::search');
+
     $routes->group('businesses', static function ($routes): void {
         $routes->get('', 'Admin\BusinessController::index');
         $routes->get('new', 'Admin\BusinessController::new');
