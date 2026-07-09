@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  push:
+    branches: [dev, main]
+  pull_request:
+    branches: [dev, main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: PHP CS Fixer · PHPStan · PHPUnit (MySQL)
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: aicassa_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP 8.5
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: mbstring, intl, mysqli, curl, dom, xml, tokenizer
+          coverage: pcov
+          tools: composer
+
+      - name: Get Composer cache dir
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: composer-
+
+      - name: Install dependencies
+        run: composer install --no-progress --prefer-dist
+
+      - name: Prepare .env (테스트 DB → MySQL 서비스)
+        run: |
+          cp env .env
+          {
+            echo "CI_ENVIRONMENT = testing"
+            echo "JWT_SECRET = ci-test-secret-key-should-be-32-characters-min"
+            echo "database.tests.hostname = 127.0.0.1"
+            echo "database.tests.database = aicassa_test"
+            echo "database.tests.username = root"
+            echo "database.tests.password = root"
+            echo "database.tests.DBDriver = MySQLi"
+            echo "database.tests.port = 3306"
+          } >> .env
+
+      - name: Prepare writable directories
+        run: mkdir -p writable/cache writable/logs writable/session writable/uploads writable/debugbar build/logs
+
+      - name: Wait for MySQL
+        run: |
+          for i in $(seq 1 30); do
+            if mysqladmin ping -h 127.0.0.1 -uroot -proot --silent; then
+              echo "MySQL is up"; break
+            fi
+            echo "Waiting for MySQL..."; sleep 2
+          done
+
+      - name: PHP CS Fixer (dry-run)
+        run: composer cs
+
+      - name: PHPStan (level 6)
+        run: composer analyse
+
+      - name: PHPUnit (MySQL)
+        run: composer test

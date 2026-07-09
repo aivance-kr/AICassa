@@ -1,5 +1,6 @@
 <?php
 
+use App\Database\Seeds\AccountSeeder;
 use App\DTOs\LedgerData;
 use App\Enums\EntryType;
 use App\Enums\EvidenceType;
@@ -22,9 +23,8 @@ final class LedgerServiceTest extends CIUnitTestCase
 {
     use DatabaseTestTrait;
 
-    protected $seed      = \App\Database\Seeds\AccountSeeder::class;
-    protected $namespace = null;
-
+    protected $seed = AccountSeeder::class;
+    protected $namespace;
     private LedgerService $service;
     private int $userId;
     private int $businessId;
@@ -126,16 +126,27 @@ final class LedgerServiceTest extends CIUnitTestCase
     {
         $sales = $this->salesAccountId();
         $this->service->create($this->userId, $this->businessId, new LedgerData(
-            entryDate: '2023-06-01', entryType: EntryType::Income, description: '작년매출',
-            supplyAmount: 1_000_000, accountId: $sales, evidenceType: EvidenceType::TaxInvoice,
+            entryDate: '2023-06-01',
+            entryType: EntryType::Income,
+            description: '작년매출',
+            supplyAmount: 1_000_000,
+            accountId: $sales,
+            evidenceType: EvidenceType::TaxInvoice,
         ));
         $this->service->create($this->userId, $this->businessId, new LedgerData(
-            entryDate: '2024-06-01', entryType: EntryType::Income, description: '올해매출',
-            supplyAmount: 2_000_000, accountId: $sales, evidenceType: EvidenceType::TaxInvoice,
+            entryDate: '2024-06-01',
+            entryType: EntryType::Income,
+            description: '올해매출',
+            supplyAmount: 2_000_000,
+            accountId: $sales,
+            evidenceType: EvidenceType::TaxInvoice,
         ));
         $this->service->create($this->userId, $this->businessId, new LedgerData(
-            entryDate: '2024-07-01', entryType: EntryType::Expense, description: '올해비용',
-            supplyAmount: 500_000, evidenceType: EvidenceType::TaxInvoice,
+            entryDate: '2024-07-01',
+            entryType: EntryType::Expense,
+            description: '올해비용',
+            supplyAmount: 500_000,
+            evidenceType: EvidenceType::TaxInvoice,
         ));
 
         // 2024년만 필터

@@ -18,8 +18,7 @@ final class BusinessServiceTest extends CIUnitTestCase
 {
     use DatabaseTestTrait;
 
-    protected $namespace = null;
-
+    protected $namespace;
     private BusinessService $service;
 
     protected function setUp(): void

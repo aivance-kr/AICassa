@@ -1,5 +1,7 @@
 <?php
 
+use App\Database\Seeds\AccountSeeder;
+use App\Exceptions\NotFoundException;
 use App\Models\BusinessModel;
 use App\Models\PartnerModel;
 use App\Services\LedgerImportService;
@@ -18,9 +20,8 @@ final class LedgerImportServiceTest extends CIUnitTestCase
 {
     use DatabaseTestTrait;
 
-    protected $seed      = \App\Database\Seeds\AccountSeeder::class;
-    protected $namespace = null;
-
+    protected $seed = AccountSeeder::class;
+    protected $namespace;
     private LedgerImportService $service;
     private int $userId;
     private int $businessId;
@@ -85,7 +86,7 @@ final class LedgerImportServiceTest extends CIUnitTestCase
         $other = new UserModel();
         $other->save(new User(['username' => 'other1', 'email' => 'x@test.com', 'password' => 'secret12345']));
 
-        $this->expectException(\App\Exceptions\NotFoundException::class);
+        $this->expectException(NotFoundException::class);
         $this->service->import((int) $other->getInsertID(), $this->businessId, []);
     }
 }

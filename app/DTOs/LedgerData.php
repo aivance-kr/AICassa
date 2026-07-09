@@ -18,7 +18,8 @@ final readonly class LedgerData
         public ?int $accountId = null,
         public ?int $partnerId = null,
         public ?EvidenceType $evidenceType = null,
-    ) {}
+    ) {
+    }
 
     /**
      * @param array<string, mixed> $data

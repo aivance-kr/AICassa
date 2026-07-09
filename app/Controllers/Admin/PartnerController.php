@@ -16,7 +16,7 @@ class PartnerController extends BaseAdminController
     /**
      * 거래처 목록.
      */
-    public function index(int $businessId): string|RedirectResponse
+    public function index(int $businessId): RedirectResponse|string
     {
         $business = $this->business($businessId);
         if ($business === null) {
@@ -32,7 +32,7 @@ class PartnerController extends BaseAdminController
     /**
      * 등록 폼.
      */
-    public function new(int $businessId): string|RedirectResponse
+    public function new(int $businessId): RedirectResponse|string
     {
         $business = $this->business($businessId);
         if ($business === null) {
@@ -72,7 +72,7 @@ class PartnerController extends BaseAdminController
     /**
      * 수정 폼.
      */
-    public function edit(int $businessId, int $partnerId): string|RedirectResponse
+    public function edit(int $businessId, int $partnerId): RedirectResponse|string
     {
         try {
             $partner = service('partnerService')->get($this->authUserId(), $businessId, $partnerId);
@@ -135,7 +135,7 @@ class PartnerController extends BaseAdminController
     /**
      * CSV 업로드 폼.
      */
-    public function importForm(int $businessId): string|RedirectResponse
+    public function importForm(int $businessId): RedirectResponse|string
     {
         $business = $this->business($businessId);
         if ($business === null) {
@@ -148,7 +148,7 @@ class PartnerController extends BaseAdminController
     /**
      * CSV 업로드 처리(일괄등록).
      */
-    public function import(int $businessId): string|RedirectResponse
+    public function import(int $businessId): RedirectResponse|string
     {
         $business = $this->business($businessId);
         if ($business === null) {

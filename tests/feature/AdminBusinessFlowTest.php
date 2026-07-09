@@ -1,5 +1,6 @@
 <?php
 
+use App\DTOs\BusinessData;
 use CodeIgniter\Shield\Entities\User;
 use CodeIgniter\Shield\Models\UserModel;
 use CodeIgniter\Shield\Test\AuthenticationTesting;
@@ -21,7 +22,7 @@ final class AdminBusinessFlowTest extends CIUnitTestCase
     use FeatureTestTrait;
     use AuthenticationTesting;
 
-    protected $namespace = null;
+    protected $namespace;
 
     private function makeUser(): User
     {
@@ -69,7 +70,7 @@ final class AdminBusinessFlowTest extends CIUnitTestCase
     public function testCannotEditOtherUsersBusiness(): void
     {
         $owner = $this->makeUser();
-        $id    = service('businessService')->create((int) $owner->id, \App\DTOs\BusinessData::fromArray(['name' => '내상회']));
+        $id    = service('businessService')->create((int) $owner->id, BusinessData::fromArray(['name' => '내상회']));
 
         $intruder = new UserModel();
         $intruder->save(new User(['username' => 'intruder', 'email' => 'intruder@test.com', 'password' => 'secret12345']));

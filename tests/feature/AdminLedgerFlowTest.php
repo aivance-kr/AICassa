@@ -1,5 +1,9 @@
 <?php
 
+use App\Database\Seeds\AccountSeeder;
+use App\DTOs\LedgerData;
+use App\Enums\EntryType;
+use App\Enums\EvidenceType;
 use App\Models\AccountModel;
 use App\Models\BusinessModel;
 use App\Services\LedgerService;
@@ -21,9 +25,8 @@ final class AdminLedgerFlowTest extends CIUnitTestCase
     use FeatureTestTrait;
     use AuthenticationTesting;
 
-    protected $seed      = \App\Database\Seeds\AccountSeeder::class;
-    protected $namespace = null;
-
+    protected $seed = AccountSeeder::class;
+    protected $namespace;
     private User $user;
     private int $businessId;
 
@@ -89,12 +92,12 @@ final class AdminLedgerFlowTest extends CIUnitTestCase
     public function testCopyCreatesDuplicate(): void
     {
         $svc = new LedgerService();
-        $id  = $svc->create((int) $this->user->id, $this->businessId, new \App\DTOs\LedgerData(
+        $id  = $svc->create((int) $this->user->id, $this->businessId, new LedgerData(
             entryDate: '2024-02-01',
-            entryType: \App\Enums\EntryType::Expense,
+            entryType: EntryType::Expense,
             description: '월 임차료',
             supplyAmount: 300_000,
-            evidenceType: \App\Enums\EvidenceType::TaxInvoice,
+            evidenceType: EvidenceType::TaxInvoice,
         ));
 
         $this->actingAs($this->user)

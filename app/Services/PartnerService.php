@@ -163,6 +163,7 @@ final class PartnerService
             if ($reason !== null) {
                 $errors[] = ['row' => $rowNum, 'reason' => $reason];
                 $skipped++;
+
                 continue;
             }
 
@@ -172,6 +173,7 @@ final class PartnerService
             if (! $this->partners->insert($row)) {
                 $errors[] = ['row' => $rowNum, 'reason' => '유효성 오류'];
                 $skipped++;
+
                 continue;
             }
 
