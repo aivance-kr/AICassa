@@ -9,12 +9,11 @@
         default             => '-',
     };
 ?>
-<h1>자산대장 <span class="muted">— <?= esc($business['name']) ?></span></h1>
+<h1>자산대장</h1>
+<p class="page-desc">사업용 자산을 등록하고 감가상각비를 계산합니다. 취득·처분·감가상각 내역은 장부에 자동 반영됩니다.</p>
 
 <div class="toolbar">
     <a href="/admin/businesses/<?= $bid ?>/assets/new" class="btn">+ 자산 등록</a>
-    <a href="/admin/businesses/<?= $bid ?>/ledger" class="btn secondary">장부</a>
-    <a href="/admin/businesses" class="btn secondary">← 사업장 목록</a>
 </div>
 
 <?php if ($assets === []): ?>

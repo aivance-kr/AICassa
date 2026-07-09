@@ -12,7 +12,8 @@
         default             => '-',
     };
 ?>
-<h1>종합소득세 신고서식 <span class="muted">— <?= esc($business['name']) ?> · <?= (int) $year ?>년 귀속</span></h1>
+<h1>종합소득세 신고서식 <span class="muted">— <?= (int) $year ?>년 귀속</span></h1>
+<p class="page-desc">장부·재고·자산 데이터로 소득금액계산서·필요경비명세서·감가상각조정명세서를 생성합니다. 인쇄(PDF)·엑셀로 내보낼 수 있습니다.</p>
 <p class="muted" style="margin:-4px 0 12px; font-size:12px;">
     서식 버전: <strong><?= esc($formVersion['version']) ?></strong>
     <?php if (! $formVersion['supported']): ?>
@@ -32,7 +33,6 @@
     </form>
     <a href="/admin/businesses/<?= $bid ?>/reports/tax-forms/print?fiscal_year=<?= (int) $year ?>" class="btn" target="_blank" rel="noopener">인쇄 (PDF)</a>
     <a href="/admin/businesses/<?= $bid ?>/reports/tax-forms/excel?fiscal_year=<?= (int) $year ?>" class="btn secondary">엑셀 다운로드</a>
-    <a href="/admin/businesses/<?= $bid ?>/ledger" class="btn secondary">장부</a>
 </div>
 
 <!-- 인적사항 -->
