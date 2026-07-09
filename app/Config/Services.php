@@ -4,6 +4,7 @@ namespace Config;
 
 use App\Services\BusinessService;
 use App\Services\DepreciationService;
+use App\Services\LedgerImportService;
 use App\Services\LedgerService;
 use App\Services\PartnerService;
 use App\Services\VatCalculatorService;
@@ -82,5 +83,17 @@ class Services extends BaseService
         }
 
         return new LedgerService();
+    }
+
+    /**
+     * 장부 CSV 일괄 업로드 서비스.
+     */
+    public static function ledgerImportService(bool $getShared = true): LedgerImportService
+    {
+        if ($getShared) {
+            return static::getSharedInstance('ledgerImportService');
+        }
+
+        return new LedgerImportService();
     }
 }

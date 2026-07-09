@@ -21,4 +21,18 @@ enum EntryType: string
             self::AssetDisposal => '자산_매각',
         };
     }
+
+    /**
+     * 한글 표시명으로 역매핑(일괄 업로드용). 미일치 시 null.
+     */
+    public static function fromLabel(string $label): ?self
+    {
+        foreach (self::cases() as $case) {
+            if ($case->label() === trim($label)) {
+                return $case;
+            }
+        }
+
+        return null;
+    }
 }

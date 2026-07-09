@@ -163,6 +163,43 @@ class LedgerController extends BaseAdminController
     }
 
     /**
+     * CSV 업로드 폼.
+     */
+    public function importForm(int $businessId): string|RedirectResponse
+    {
+        $business = $this->business($businessId);
+        if ($business === null) {
+            return redirect()->to('/admin/businesses')->with('error', '사업장을 찾을 수 없습니다.');
+        }
+
+        return $this->render('admin/ledger/import', ['business' => $business, 'result' => null]);
+    }
+
+    /**
+     * CSV 업로드 처리(일괄 등록).
+     */
+    public function import(int $businessId): string|RedirectResponse
+    {
+        $business = $this->business($businessId);
+        if ($business === null) {
+            return redirect()->to('/admin/businesses')->with('error', '사업장을 찾을 수 없습니다.');
+        }
+
+        $file = $this->request->getFile('csv');
+        if ($file === null || ! $file->isValid() || ! in_array($file->getExtension(), ['csv', 'txt'], true)) {
+            return redirect()->back()->with('error', 'CSV 파일을 선택하세요.');
+        }
+
+        $raw = (string) file_get_contents($file->getTempName());
+        $csv = mb_check_encoding($raw, 'UTF-8') ? $raw : (string) mb_convert_encoding($raw, 'UTF-8', 'CP949');
+
+        $rows   = service('ledgerImportService')->parseCsv($csv);
+        $result = service('ledgerImportService')->import($this->authUserId(), $businessId, $rows);
+
+        return $this->render('admin/ledger/import', ['business' => $business, 'result' => $result]);
+    }
+
+    /**
      * 폼 공통 데이터(계정 목록·증빙유형).
      *
      * @param array<string, mixed>      $business

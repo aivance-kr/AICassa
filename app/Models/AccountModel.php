@@ -34,6 +34,18 @@ class AccountModel extends Model
     }
 
     /**
+     * 카테고리 + 계정명으로 단건 조회(일괄 업로드 이름 해석용).
+     *
+     * @return array<string, mixed>|null
+     */
+    public function findByCategoryName(AccountCategory $category, string $name): ?array
+    {
+        return $this->where('category', $category->value)
+            ->where('name', trim($name))
+            ->first();
+    }
+
+    /**
      * id => name 매핑.
      *
      * @return array<int, string>

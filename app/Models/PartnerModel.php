@@ -50,6 +50,18 @@ class PartnerModel extends Model
     }
 
     /**
+     * 사업장 내 상호로 거래처 단건 조회(일괄 업로드 이름 해석용).
+     *
+     * @return array<string, mixed>|null
+     */
+    public function findByName(int $businessId, string $name): ?array
+    {
+        return $this->where('business_id', $businessId)
+            ->where('name', trim($name))
+            ->first();
+    }
+
+    /**
      * 사업장 내 동일 사업자등록번호 거래처 존재 여부(중복 방지).
      * $excludeId 로 자기 자신은 제외(수정 시).
      */

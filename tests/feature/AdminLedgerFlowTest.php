@@ -72,6 +72,20 @@ final class AdminLedgerFlowTest extends CIUnitTestCase
         $this->assertSame(2024, (int) $entries[0]['fiscal_year']);
     }
 
+    public function testImportFormRenders(): void
+    {
+        $result = $this->actingAs($this->user)->get("/admin/businesses/{$this->businessId}/ledger/import");
+        $result->assertOK();
+        $result->assertSee("/admin/businesses/{$this->businessId}/ledger/import");
+    }
+
+    public function testImportWithoutFileRedirectsWithError(): void
+    {
+        $this->actingAs($this->user)
+            ->post("/admin/businesses/{$this->businessId}/ledger/import")
+            ->assertRedirect();
+    }
+
     public function testCopyCreatesDuplicate(): void
     {
         $svc = new LedgerService();

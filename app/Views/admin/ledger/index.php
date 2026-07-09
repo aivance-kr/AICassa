@@ -6,6 +6,7 @@
 
 <div class="toolbar">
     <a href="/admin/businesses/<?= $bid ?>/ledger/new" class="btn">+ 거래 입력</a>
+    <a href="/admin/businesses/<?= $bid ?>/ledger/import" class="btn secondary">CSV 일괄 업로드</a>
     <a href="/admin/businesses/<?= $bid ?>/partners" class="btn secondary">거래처</a>
     <a href="/admin/businesses" class="btn secondary">← 사업장 목록</a>
 </div>
