@@ -12,6 +12,12 @@
     };
 ?>
 <h1>종합소득세 신고서식 <span class="muted">— <?= esc($business['name']) ?> · <?= (int) $year ?>년 귀속</span></h1>
+<p class="muted" style="margin:-4px 0 12px; font-size:12px;">
+    서식 버전: <strong><?= esc($formVersion['version']) ?></strong>
+    <?php if (! $formVersion['supported']): ?>
+        · <span style="color:#dc2626;">⚠ 이 귀속연도는 서식 정확성이 보장되지 않습니다</span>
+    <?php endif; ?>
+</p>
 
 <div class="toolbar">
     <form method="get" style="display:flex; gap:8px; align-items:center;">

@@ -42,6 +42,7 @@
         상호: <?= esc($business['name']) ?>
         <?php if (($business['biz_reg_no'] ?? '') !== ''): ?> · 사업자등록번호: <?= esc($business['biz_reg_no']) ?><?php endif; ?>
         · 귀속연도: <?= (int) $year ?>년
+        · 서식버전: <?= esc($formVersion['version']) ?>
     </div>
 
     <!-- ① 소득금액계산서 -->

@@ -7,6 +7,7 @@ use App\Enums\EntryType;
 use App\Exceptions\NotFoundException;
 use App\Models\BusinessModel;
 use App\Models\InventoryModel;
+use Config\TaxForm as TaxFormConfig;
 
 /**
  * 종합소득세 신고서식 데이터 생성.
@@ -34,6 +35,22 @@ final class TaxFormService
         $this->inventories = $inventories ?? model(InventoryModel::class);
         $this->ledger      = $ledger ?? service('ledgerService');
         $this->assets      = $assets ?? service('assetService');
+    }
+
+    /**
+     * 귀속연도에 해당하는 서식 버전 정보.
+     *
+     * @return array{year:int, version:string, supported:bool}
+     */
+    public function formVersion(int $year): array
+    {
+        $config = config(TaxFormConfig::class);
+
+        return [
+            'year'      => $year,
+            'version'   => $config->versions[$year] ?? $config->latest,
+            'supported' => $year >= $config->earliestSupportedYear,
+        ];
     }
 
     /**

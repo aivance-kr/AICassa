@@ -127,4 +127,20 @@ final class TaxFormServiceTest extends CIUnitTestCase
         $this->expectException(NotFoundException::class);
         $this->service->incomeStatement((int) $other->getInsertID(), $this->businessId, 2024);
     }
+
+    public function testFormVersionResolvesByYear(): void
+    {
+        // 맵에 있는 연도 → 해당 버전
+        $v2024 = $this->service->formVersion(2024);
+        $this->assertSame('2024-v1', $v2024['version']);
+        $this->assertTrue($v2024['supported']);
+
+        // 맵에 없는 미래 연도 → 최신 버전으로 폴백
+        $future = $this->service->formVersion(2999);
+        $this->assertSame('2025-v1', $future['version']);
+
+        // 지원 하한 이전 연도 → 미지원 플래그
+        $old = $this->service->formVersion(2000);
+        $this->assertFalse($old['supported']);
+    }
 }

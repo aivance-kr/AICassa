@@ -22,14 +22,14 @@ final class TaxFormExporter
      * @param array<string, mixed>                                                                                                  $statement    TaxFormService::incomeStatement
      * @param list<array{name:string, method:string|null, acquisition_cost:int, depreciation:int, accumulated:int, book_value:int}> $depreciation
      */
-    public function spreadsheet(array $business, array $statement, array $depreciation, int $year): Spreadsheet
+    public function spreadsheet(array $business, array $statement, array $depreciation, int $year, ?string $version = null): Spreadsheet
     {
         $book = new Spreadsheet();
         $book->getProperties()
             ->setTitle('종합소득세 신고서식')
             ->setCreator('AICassa');
 
-        $this->buildIncomeStatement($book->getActiveSheet(), $business, $statement, $year);
+        $this->buildIncomeStatement($book->getActiveSheet(), $business, $statement, $year, $version);
         $this->buildExpenseDetail($book->createSheet(), $statement, $year);
         $this->buildDepreciation($book->createSheet(), $depreciation, $year);
 
@@ -44,11 +44,15 @@ final class TaxFormExporter
      * @param array<string, mixed> $business
      * @param array<string, mixed> $statement
      */
-    private function buildIncomeStatement(Worksheet $sheet, array $business, array $statement, int $year): void
+    private function buildIncomeStatement(Worksheet $sheet, array $business, array $statement, int $year, ?string $version = null): void
     {
         $sheet->setTitle('소득금액계산서');
         $sheet->setCellValue('A1', "간편장부 소득금액계산서 ({$year} 귀속)");
         $sheet->mergeCells('A1:B1');
+
+        if ($version !== null) {
+            $sheet->setCellValue('C1', "서식버전 {$version}");
+        }
 
         $sheet->setCellValue('A3', '상호');
         $sheet->setCellValue('B3', (string) $business['name']);
