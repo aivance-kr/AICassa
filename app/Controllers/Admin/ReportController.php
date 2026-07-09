@@ -5,6 +5,8 @@ namespace App\Controllers\Admin;
 use App\DTOs\InventoryData;
 use App\Exceptions\NotFoundException;
 use CodeIgniter\HTTP\RedirectResponse;
+use CodeIgniter\HTTP\ResponseInterface;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 /**
  * 리포트(Admin). 영업현황표 + 종합소득세 신고서식.
@@ -85,6 +87,70 @@ class ReportController extends BaseAdminController
 
         return redirect()->to("/admin/businesses/{$businessId}/reports/tax-forms?fiscal_year={$year}")
             ->with('message', '재고가 저장되었습니다.');
+    }
+
+    /**
+     * 신고서식 인쇄용 페이지(브라우저 인쇄 → PDF 저장). 관리 UI 없는 독립 문서.
+     */
+    public function taxFormsPrint(int $businessId): RedirectResponse|string
+    {
+        $business = $this->business($businessId);
+        if ($business === null) {
+            return redirect()->to('/admin/businesses')->with('error', '사업장을 찾을 수 없습니다.');
+        }
+
+        $year = $this->resolveYear($businessId);
+        $tax  = service('taxFormService');
+
+        return view('admin/reports/tax_forms_print', [
+            'business'     => $business,
+            'year'         => $year,
+            'statement'    => $tax->incomeStatement($this->authUserId(), $businessId, $year),
+            'depreciation' => $tax->depreciationAdjustment($this->authUserId(), $businessId, $year),
+        ]);
+    }
+
+    /**
+     * 신고서식 3종 엑셀 다운로드.
+     */
+    public function taxFormsExcel(int $businessId): RedirectResponse|ResponseInterface
+    {
+        $business = $this->business($businessId);
+        if ($business === null) {
+            return redirect()->to('/admin/businesses')->with('error', '사업장을 찾을 수 없습니다.');
+        }
+
+        $year = $this->resolveYear($businessId);
+        $tax  = service('taxFormService');
+
+        $book = service('taxFormExporter')->spreadsheet(
+            $business,
+            $tax->incomeStatement($this->authUserId(), $businessId, $year),
+            $tax->depreciationAdjustment($this->authUserId(), $businessId, $year),
+            $year,
+        );
+
+        ob_start();
+        (new Xlsx($book))->save('php://output');
+        $content = (string) ob_get_clean();
+
+        return $this->response
+            ->setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+            ->setHeader('Content-Disposition', "attachment; filename=\"tax-forms-{$year}.xlsx\"")
+            ->setBody($content);
+    }
+
+    /**
+     * 요청 연도 또는 최신 귀속연도(없으면 올해).
+     */
+    private function resolveYear(int $businessId): int
+    {
+        $years     = service('ledgerService')->availableYears($this->authUserId(), $businessId);
+        $requested = $this->request->getGet('fiscal_year');
+
+        return $requested !== null && $requested !== ''
+            ? (int) $requested
+            : ($years[0] ?? (int) date('Y'));
     }
 
     /**

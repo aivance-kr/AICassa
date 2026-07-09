@@ -9,6 +9,7 @@ use App\Services\LedgerImportService;
 use App\Services\LedgerService;
 use App\Services\PartnerService;
 use App\Services\SummaryService;
+use App\Services\TaxFormExporter;
 use App\Services\TaxFormService;
 use App\Services\VatCalculatorService;
 use CodeIgniter\Config\BaseService;
@@ -134,5 +135,17 @@ class Services extends BaseService
         }
 
         return new TaxFormService();
+    }
+
+    /**
+     * 신고서식 엑셀 익스포터.
+     */
+    public static function taxFormExporter(bool $getShared = true): TaxFormExporter
+    {
+        if ($getShared) {
+            return static::getSharedInstance('taxFormExporter');
+        }
+
+        return new TaxFormExporter();
     }
 }

@@ -23,6 +23,8 @@
             <?php endforeach; ?>
         </select>
     </form>
+    <a href="/admin/businesses/<?= $bid ?>/reports/tax-forms/print?fiscal_year=<?= (int) $year ?>" class="btn" target="_blank" rel="noopener">인쇄 (PDF)</a>
+    <a href="/admin/businesses/<?= $bid ?>/reports/tax-forms/excel?fiscal_year=<?= (int) $year ?>" class="btn secondary">엑셀 다운로드</a>
     <a href="/admin/businesses/<?= $bid ?>/ledger" class="btn secondary">장부</a>
     <a href="/admin/businesses" class="btn secondary">← 사업장 목록</a>
 </div>

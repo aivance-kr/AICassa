@@ -44,6 +44,8 @@ $routes->group('admin', ['filter' => 'session'], static function ($routes): void
         $routes->get('(:num)/reports/business-status', 'Admin\ReportController::businessStatus/$1');
         $routes->get('(:num)/reports/tax-forms', 'Admin\ReportController::taxForms/$1');
         $routes->post('(:num)/reports/tax-forms/inventory', 'Admin\ReportController::saveInventory/$1');
+        $routes->get('(:num)/reports/tax-forms/print', 'Admin\ReportController::taxFormsPrint/$1');
+        $routes->get('(:num)/reports/tax-forms/excel', 'Admin\ReportController::taxFormsExcel/$1');
 
         // 자산대장 · 감가상각
         $routes->get('(:num)/assets', 'Admin\AssetController::index/$1');
