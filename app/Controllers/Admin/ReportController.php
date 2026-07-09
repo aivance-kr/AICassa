@@ -3,6 +3,7 @@
 namespace App\Controllers\Admin;
 
 use App\DTOs\InventoryData;
+use App\DTOs\TaxAdjustmentData;
 use App\Exceptions\NotFoundException;
 use CodeIgniter\HTTP\RedirectResponse;
 use CodeIgniter\HTTP\ResponseInterface;
@@ -64,8 +65,31 @@ class ReportController extends BaseAdminController
             'year'         => $year,
             'statement'    => $tax->incomeStatement($this->authUserId(), $businessId, $year),
             'depreciation' => $tax->depreciationAdjustment($this->authUserId(), $businessId, $year),
+            'adjustments'  => $tax->adjustments($this->authUserId(), $businessId, $year),
             'formVersion'  => $tax->formVersion($year),
         ]);
+    }
+
+    /**
+     * 세무조정(⑫⑬⑯⑰⑳㉑) 저장.
+     */
+    public function saveAdjustments(int $businessId): RedirectResponse
+    {
+        $year = (int) $this->request->getPost('fiscal_year');
+
+        try {
+            service('taxFormService')->saveAdjustments(
+                $this->authUserId(),
+                $businessId,
+                $year,
+                TaxAdjustmentData::fromArray($this->request->getPost()),
+            );
+        } catch (NotFoundException) {
+            return redirect()->to('/admin/businesses')->with('error', '사업장을 찾을 수 없습니다.');
+        }
+
+        return redirect()->to("/admin/businesses/{$businessId}/reports/tax-forms?fiscal_year={$year}")
+            ->with('message', '세무조정이 저장되었습니다.');
     }
 
     /**

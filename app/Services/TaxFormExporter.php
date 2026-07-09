@@ -54,17 +54,32 @@ final class TaxFormExporter
             $sheet->setCellValue('C1', "서식버전 {$version}");
         }
 
-        $sheet->setCellValue('A3', '상호');
-        $sheet->setCellValue('B3', (string) $business['name']);
-        $sheet->setCellValue('A4', '사업자등록번호');
-        $sheet->setCellValue('B4', (string) ($business['biz_reg_no'] ?? ''));
+        // 인적사항
+        $sheet->setCellValue('A3', '성명');
+        $sheet->setCellValue('B3', (string) ($business['owner_name'] ?? ''));
+        $sheet->setCellValue('A4', '상호');
+        $sheet->setCellValue('B4', (string) $business['name']);
+        $sheet->setCellValue('A5', '사업자등록번호');
+        $sheet->setCellValue('B5', (string) ($business['biz_reg_no'] ?? ''));
+        $sheet->setCellValue('A6', '업종 / 주업종코드');
+        $sheet->setCellValue('B6', trim(((string) ($business['industry_name'] ?? '')) . ' / ' . ((string) ($business['industry_code'] ?? ''))));
 
         $rows = [
-            ['총수입금액', $statement['total_revenue']],
-            ['필요경비', $statement['necessary_expense']],
-            ['소득금액 (총수입금액 − 필요경비)', $statement['income_amount']],
+            ['⑪ 장부상 수입금액', $statement['total_revenue']],
+            ['⑫ 수입금액에서 제외할 금액', $statement['revenue_exclude']],
+            ['⑬ 수입금액에 가산할 금액', $statement['revenue_add']],
+            ['⑭ 세무조정 후 수입금액 (⑪−⑫+⑬)', $statement['adjusted_revenue']],
+            ['⑮ 장부상 필요경비', $statement['necessary_expense']],
+            ['⑯ 필요경비에서 제외할 금액', $statement['expense_exclude']],
+            ['⑰ 필요경비에 가산할 금액', $statement['expense_add']],
+            ['⑱ 세무조정 후 필요경비 (⑮−⑯+⑰)', $statement['adjusted_expense']],
+            ['⑲ 차가감 소득금액 (⑭−⑱)', $statement['pre_income']],
+            ['⑳ 기부금 한도초과액', $statement['donation_over']],
+            ['㉑ 기부금이월액 중 필요경비산입액', $statement['donation_carryover']],
+            ['㉒ 당해연도 소득금액 (⑲+⑳−㉑)', $statement['income_amount']],
         ];
-        $r = 6;
+        $start = 8;
+        $r     = $start;
 
         foreach ($rows as [$label, $value]) {
             $sheet->setCellValue("A{$r}", $label);
@@ -72,8 +87,8 @@ final class TaxFormExporter
             $r++;
         }
 
-        $this->formatMoneyColumn($sheet, 'B', 6, $r - 1);
-        $sheet->getColumnDimension('A')->setWidth(32);
+        $this->formatMoneyColumn($sheet, 'B', $start, $r - 1);
+        $sheet->getColumnDimension('A')->setWidth(34);
         $sheet->getColumnDimension('B')->setWidth(18);
     }
 
@@ -108,26 +123,32 @@ final class TaxFormExporter
         $sheet->setCellValue("A{$r}", '[필요경비]');
         $r++;
         $eStart = $r;
-        $sheet->setCellValue("A{$r}", '매출원가(상품)');
+        $sheet->setCellValue("A{$r}", '⑰ 매출원가(상품)');
         $sheet->setCellValue("B{$r}", $statement['goods_cogs']);
         $r++;
-        if ($statement['materials_cost'] !== 0) {
-            $sheet->setCellValue("A{$r}", '재료비');
-            $sheet->setCellValue("B{$r}", $statement['materials_cost']);
-            $r++;
-        }
-        /** @var array<string, int> $expense */
-        $expense = $statement['expense_by_account'];
 
-        foreach ($expense as $name => $amt) {
-            if ($name === '상품매입' || $name === '재료매입') {
-                continue; // 매출원가/재료비로 대체
+        /** @var array{materials:int, labor:int, overhead:int, total:int} $mfg */
+        $mfg = $statement['manufacturing'];
+        if ($mfg['total'] !== 0) {
+            foreach ([['㉑ 재료비', $mfg['materials']], ['㉒ 노무비', $mfg['labor']], ['㉓ 경비', $mfg['overhead']], ['㉔ 당기제조비용', $mfg['total']]] as [$label, $value]) {
+                $sheet->setCellValue("A{$r}", $label);
+                $sheet->setCellValue("B{$r}", $value);
+                $r++;
             }
-            $sheet->setCellValue("A{$r}", $name);
-            $sheet->setCellValue("B{$r}", $amt);
+        }
+
+        /** @var list<array{name:string, amount:int}> $generalAdmin */
+        $generalAdmin = $statement['general_admin'];
+
+        foreach ($generalAdmin as $row) {
+            $sheet->setCellValue("A{$r}", $row['name']);
+            $sheet->setCellValue("B{$r}", $row['amount']);
             $r++;
         }
-        $sheet->setCellValue("A{$r}", '필요경비 계');
+        $sheet->setCellValue("A{$r}", '㊵ 일반관리비 등 계');
+        $sheet->setCellValue("B{$r}", $statement['general_admin_total']);
+        $r++;
+        $sheet->setCellValue("A{$r}", '㊶ 필요경비 합계');
         $sheet->setCellValue("B{$r}", $statement['necessary_expense']);
         $this->formatMoneyColumn($sheet, 'B', $eStart, $r);
 

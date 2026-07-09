@@ -90,4 +90,18 @@ final class AdminTaxFormFlowTest extends CIUnitTestCase
         $this->assertSame(3_000_000, $s['goods_cogs']);        // 50만+400만-150만
         $this->assertSame(7_000_000, $s['income_amount']);     // 1,000만 − 300만
     }
+
+    public function testSaveAdjustmentsAffectsIncome(): void
+    {
+        $this->entry(EntryType::Income, '매출', 10_000_000);
+
+        $this->actingAs($this->user)->post(
+            "/admin/businesses/{$this->businessId}/reports/tax-forms/adjustments",
+            ['fiscal_year' => '2024', 'revenue_exclude' => '1,000,000', 'donation_over' => '500,000'],
+        )->assertRedirect();
+
+        $s = (new TaxFormService())->incomeStatement((int) $this->user->id, $this->businessId, 2024);
+        $this->assertSame(9_000_000, $s['adjusted_revenue']);  // ⑭ = 1000만 −100만
+        $this->assertSame(9_500_000, $s['income_amount']);     // ㉒ = 900만 +50만
+    }
 }
