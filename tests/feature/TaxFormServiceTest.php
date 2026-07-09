@@ -4,6 +4,7 @@ use App\Database\Seeds\ReferenceDataSeeder;
 use App\DTOs\AssetData;
 use App\DTOs\InventoryData;
 use App\DTOs\LedgerData;
+use App\DTOs\TaxAdjustmentData;
 use App\Enums\DepreciationMethod;
 use App\Enums\EntryType;
 use App\Enums\EvidenceType;
@@ -126,6 +127,45 @@ final class TaxFormServiceTest extends CIUnitTestCase
 
         $this->expectException(NotFoundException::class);
         $this->service->incomeStatement((int) $other->getInsertID(), $this->businessId, 2024);
+    }
+
+    public function testAdjustmentsAffectIncomeAmount(): void
+    {
+        $this->entry(EntryType::Income, '매출', 10_000_000);
+        $this->entry(EntryType::Expense, '임차료', 1_000_000);
+
+        $this->service->saveAdjustments($this->userId, $this->businessId, 2024, new TaxAdjustmentData(
+            revenueAdd: 500_000,      // ⑬
+            expenseExclude: 200_000,  // ⑯
+            donationOver: 100_000,    // ⑳
+        ));
+
+        $s = $this->service->incomeStatement($this->userId, $this->businessId, 2024);
+        $this->assertSame(10_500_000, $s['adjusted_revenue']); // ⑭ = 1000만 +50만
+        $this->assertSame(800_000, $s['adjusted_expense']);    // ⑱ = 100만 −20만
+        $this->assertSame(9_700_000, $s['pre_income']);        // ⑲ = 1050만 −80만
+        $this->assertSame(9_800_000, $s['income_amount']);     // ㉒ = 970만 +10만(기부금한도초과)
+    }
+
+    public function testExpenseBreakdownSumsToNecessaryExpense(): void
+    {
+        $this->entry(EntryType::Income, '매출', 10_000_000);
+        $this->entry(EntryType::Expense, '상품매입', 4_000_000);
+        $this->entry(EntryType::Expense, '제조노무비', 1_000_000);
+        $this->entry(EntryType::Expense, '제조경비', 500_000);
+        $this->entry(EntryType::Expense, '급료', 2_000_000);
+
+        $s = $this->service->incomeStatement($this->userId, $this->businessId, 2024);
+
+        // 매출원가 400만 + 제조비용(노무100만+경비50만=150만) + 일반관리비(급료 200만) = 750만
+        $this->assertSame(4_000_000, $s['goods_cogs']);
+        $this->assertSame(1_500_000, $s['manufacturing']['total']);
+        $this->assertSame(2_000_000, $s['general_admin_total']);
+        $this->assertSame(
+            $s['goods_cogs'] + $s['manufacturing']['total'] + $s['general_admin_total'],
+            $s['necessary_expense'],
+        );
+        $this->assertSame(7_500_000, $s['necessary_expense']);
     }
 
     public function testFormVersionResolvesByYear(): void
