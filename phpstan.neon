@@ -1,0 +1,22 @@
+includes:
+    - vendor/codeigniter/phpstan-codeigniter/extension.neon
+
+parameters:
+    phpVersion: 80400
+    level: 6
+    bootstrapFiles:
+        - vendor/codeigniter4/framework/system/util_bootstrap.php
+    paths:
+        - app
+    excludePaths:
+        analyse:
+            - app/Views/*
+            # Shield 가 발행한 설정 파일(서드파티 보일러플레이트 — 배열 타입 미지정)
+            - app/Config/Auth.php
+            - app/Config/AuthGroups.php
+            - app/Config/AuthToken.php
+    codeigniter:
+        # service('auth') 등 Shield 서비스 인식
+        additionalServices:
+            - CodeIgniter\Shield\Config\Services
+    ignoreErrors: []
