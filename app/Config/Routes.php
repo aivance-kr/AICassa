@@ -39,5 +39,8 @@ $routes->group('admin', ['filter' => 'session'], static function ($routes): void
         $routes->post('(:num)/ledger/(:num)', 'Admin\LedgerController::update/$1/$2');
         $routes->post('(:num)/ledger/(:num)/delete', 'Admin\LedgerController::delete/$1/$2');
         $routes->post('(:num)/ledger/(:num)/copy', 'Admin\LedgerController::copy/$1/$2');
+
+        // 리포트 — 영업현황표
+        $routes->get('(:num)/reports/business-status', 'Admin\ReportController::businessStatus/$1');
     });
 });

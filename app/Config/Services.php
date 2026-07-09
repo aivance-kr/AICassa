@@ -7,6 +7,7 @@ use App\Services\DepreciationService;
 use App\Services\LedgerImportService;
 use App\Services\LedgerService;
 use App\Services\PartnerService;
+use App\Services\SummaryService;
 use App\Services\VatCalculatorService;
 use CodeIgniter\Config\BaseService;
 
@@ -95,5 +96,17 @@ class Services extends BaseService
         }
 
         return new LedgerImportService();
+    }
+
+    /**
+     * 영업현황표(집계) 서비스.
+     */
+    public static function summaryService(bool $getShared = true): SummaryService
+    {
+        if ($getShared) {
+            return static::getSharedInstance('summaryService');
+        }
+
+        return new SummaryService();
     }
 }
