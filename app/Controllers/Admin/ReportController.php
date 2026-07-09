@@ -64,6 +64,7 @@ class ReportController extends BaseAdminController
             'year'         => $year,
             'statement'    => $tax->incomeStatement($this->authUserId(), $businessId, $year),
             'depreciation' => $tax->depreciationAdjustment($this->authUserId(), $businessId, $year),
+            'formVersion'  => $tax->formVersion($year),
         ]);
     }
 
@@ -107,6 +108,7 @@ class ReportController extends BaseAdminController
             'year'         => $year,
             'statement'    => $tax->incomeStatement($this->authUserId(), $businessId, $year),
             'depreciation' => $tax->depreciationAdjustment($this->authUserId(), $businessId, $year),
+            'formVersion'  => $tax->formVersion($year),
         ]);
     }
 
@@ -123,11 +125,13 @@ class ReportController extends BaseAdminController
         $year = $this->resolveYear($businessId);
         $tax  = service('taxFormService');
 
-        $book = service('taxFormExporter')->spreadsheet(
+        $version = $tax->formVersion($year);
+        $book    = service('taxFormExporter')->spreadsheet(
             $business,
             $tax->incomeStatement($this->authUserId(), $businessId, $year),
             $tax->depreciationAdjustment($this->authUserId(), $businessId, $year),
             $year,
+            $version['version'],
         );
 
         ob_start();

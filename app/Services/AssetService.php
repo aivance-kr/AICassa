@@ -90,7 +90,13 @@ final class AssetService
             throw new ValidationException($this->assets->errors());
         }
 
-        return (int) $this->assets->getInsertID();
+        $id    = (int) $this->assets->getInsertID();
+        $asset = $this->assets->findScoped($businessId, $id);
+        if ($asset !== null) {
+            $this->syncLedgerEntries($businessId, $asset);
+        }
+
+        return $id;
     }
 
     /**
@@ -109,12 +115,16 @@ final class AssetService
             throw new ValidationException($this->assets->errors());
         }
 
-        return $this->get($userId, $businessId, $assetId);
+        $asset = $this->get($userId, $businessId, $assetId);
+        $this->syncLedgerEntries($businessId, $asset);
+
+        return $asset;
     }
 
     public function delete(int $userId, int $businessId, int $assetId): void
     {
         $this->get($userId, $businessId, $assetId);
+        $this->removeLedgerEntries($businessId, $assetId); // 연동 전표(구입/매각/감가상각) 제거
         $this->assets->delete($assetId);
     }
 
@@ -177,11 +187,143 @@ final class AssetService
 
         if ($existing !== null) {
             $this->ledger->update($userId, $businessId, (int) $existing['id'], $data);
-
-            return (int) $existing['id'];
+            $entryId = (int) $existing['id'];
+        } else {
+            $entryId = $this->ledger->create($userId, $businessId, $data);
         }
 
-        return $this->ledger->create($userId, $businessId, $data);
+        // 자산 연동(삭제 시 함께 정리되도록 asset_id 스탬프)
+        $this->ledgerEntries->update($entryId, ['asset_id' => $assetId]);
+
+        return $entryId;
+    }
+
+    /**
+     * 자산_구입/자산_매각 전표를 장부와 동기화한다(멱등 upsert, 미처분 시 매각 전표 제거).
+     *
+     * @param array<string, mixed> $asset
+     */
+    private function syncLedgerEntries(int $businessId, array $asset): void
+    {
+        $db = db_connect();
+        $db->transStart();
+        $this->syncPurchaseEntry($businessId, $asset);
+        $this->syncDisposalEntry($businessId, $asset);
+        $db->transComplete();
+    }
+
+    /**
+     * @param array<string, mixed> $asset
+     */
+    private function syncPurchaseEntry(int $businessId, array $asset): void
+    {
+        $row = $this->assetEntryRow(
+            $businessId,
+            $asset,
+            EntryType::AssetPurchase,
+            (string) $asset['acquired_at'],
+            (int) $asset['acquisition_cost'],
+            '자산구입: ' . $asset['name'],
+        );
+        $this->upsertAssetEntry($businessId, (int) $asset['id'], EntryType::AssetPurchase, $row);
+    }
+
+    /**
+     * @param array<string, mixed> $asset
+     */
+    private function syncDisposalEntry(int $businessId, array $asset): void
+    {
+        $existing = $this->findAssetEntry($businessId, (int) $asset['id'], EntryType::AssetDisposal);
+
+        // 처분 정보가 없으면 기존 매각 전표 제거
+        if ($asset['disposed_at'] === null || $asset['disposal_amount'] === null) {
+            if ($existing !== null) {
+                $this->ledgerEntries->delete((int) $existing['id']);
+            }
+
+            return;
+        }
+
+        $row = $this->assetEntryRow(
+            $businessId,
+            $asset,
+            EntryType::AssetDisposal,
+            (string) $asset['disposed_at'],
+            -1 * (int) $asset['disposal_amount'], // 매각은 공급가액 음수로 기록(원본 규칙)
+            '자산처분: ' . $asset['name'],
+        );
+
+        if ($existing !== null) {
+            $this->ledgerEntries->update((int) $existing['id'], $row);
+        } else {
+            $this->ledgerEntries->insert($row);
+        }
+    }
+
+    /**
+     * 자산 전표 행을 구성한다(부가세 없음, 자산종류=계정과목).
+     *
+     * @param array<string, mixed> $asset
+     *
+     * @return array<string, mixed>
+     */
+    private function assetEntryRow(int $businessId, array $asset, EntryType $type, string $date, int $amount, string $description): array
+    {
+        $account = $this->accounts->findByCategoryName(AccountCategory::Asset, (string) $asset['asset_type']);
+
+        return [
+            'business_id'   => $businessId,
+            'asset_id'      => (int) $asset['id'],
+            'fiscal_year'   => (int) substr($date, 0, 4),
+            'entry_date'    => $date,
+            'entry_type'    => $type->value,
+            'account_id'    => $account !== null ? (int) $account['id'] : null,
+            'partner_id'    => null,
+            'description'   => $description,
+            'supply_amount' => $amount,
+            'vat'           => 0,
+            'evidence_type' => EvidenceType::Other->value,
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     */
+    private function upsertAssetEntry(int $businessId, int $assetId, EntryType $type, array $row): void
+    {
+        $existing = $this->findAssetEntry($businessId, $assetId, $type);
+        if ($existing !== null) {
+            $this->ledgerEntries->update((int) $existing['id'], $row);
+        } else {
+            $this->ledgerEntries->insert($row);
+        }
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function findAssetEntry(int $businessId, int $assetId, EntryType $type): ?array
+    {
+        return $this->ledgerEntries
+            ->where('business_id', $businessId)
+            ->where('asset_id', $assetId)
+            ->where('entry_type', $type->value)
+            ->first();
+    }
+
+    /**
+     * 자산에 연동된 모든 장부 전표(구입/매각/감가상각) 소프트 삭제.
+     */
+    private function removeLedgerEntries(int $businessId, int $assetId): void
+    {
+        $rows = $this->ledgerEntries
+            ->where('business_id', $businessId)
+            ->where('asset_id', $assetId)
+            ->findAll();
+
+        foreach ($rows as $r) {
+            $this->ledgerEntries->delete((int) $r['id']);
+        }
     }
 
     /**

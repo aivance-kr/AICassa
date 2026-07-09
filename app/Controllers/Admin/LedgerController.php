@@ -100,6 +100,10 @@ class LedgerController extends BaseAdminController
                 ->with('error', '장부 항목을 찾을 수 없습니다.');
         }
 
+        if ($guard = $this->assetEntryGuard($businessId, $entry)) {
+            return $guard;
+        }
+
         return $this->render('admin/ledger/form', $this->formData($business, $entry));
     }
 
@@ -108,6 +112,16 @@ class LedgerController extends BaseAdminController
      */
     public function update(int $businessId, int $entryId): RedirectResponse
     {
+        try {
+            $entry = service('ledgerService')->get($this->authUserId(), $businessId, $entryId);
+        } catch (NotFoundException) {
+            return redirect()->to("/admin/businesses/{$businessId}/ledger")
+                ->with('error', '장부 항목을 찾을 수 없습니다.');
+        }
+        if ($guard = $this->assetEntryGuard($businessId, $entry)) {
+            return $guard;
+        }
+
         if (! $this->validate($this->rules())) {
             return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
         }
@@ -136,11 +150,16 @@ class LedgerController extends BaseAdminController
     public function delete(int $businessId, int $entryId): RedirectResponse
     {
         try {
-            service('ledgerService')->delete($this->authUserId(), $businessId, $entryId);
+            $entry = service('ledgerService')->get($this->authUserId(), $businessId, $entryId);
         } catch (NotFoundException) {
             return redirect()->to("/admin/businesses/{$businessId}/ledger")
                 ->with('error', '장부 항목을 찾을 수 없습니다.');
         }
+        if ($guard = $this->assetEntryGuard($businessId, $entry)) {
+            return $guard;
+        }
+
+        service('ledgerService')->delete($this->authUserId(), $businessId, $entryId);
 
         return redirect()->to("/admin/businesses/{$businessId}/ledger")
             ->with('message', '거래가 삭제되었습니다.');
@@ -152,14 +171,34 @@ class LedgerController extends BaseAdminController
     public function copy(int $businessId, int $entryId): RedirectResponse
     {
         try {
-            $newId = service('ledgerService')->copy($this->authUserId(), $businessId, $entryId);
+            $entry = service('ledgerService')->get($this->authUserId(), $businessId, $entryId);
         } catch (NotFoundException) {
             return redirect()->to("/admin/businesses/{$businessId}/ledger")
                 ->with('error', '장부 항목을 찾을 수 없습니다.');
         }
+        if ($guard = $this->assetEntryGuard($businessId, $entry)) {
+            return $guard;
+        }
+
+        $newId = service('ledgerService')->copy($this->authUserId(), $businessId, $entryId);
 
         return redirect()->to("/admin/businesses/{$businessId}/ledger/{$newId}/edit")
             ->with('message', '복사되었습니다. 내용을 수정하세요.');
+    }
+
+    /**
+     * 자산_구입/자산_매각 전표는 장부에서 직접 수정·삭제·복사 불가(자산대장에서 관리).
+     *
+     * @param array<string, mixed> $entry
+     */
+    private function assetEntryGuard(int $businessId, array $entry): ?RedirectResponse
+    {
+        if (in_array($entry['entry_type'], ['asset_purchase', 'asset_disposal'], true)) {
+            return redirect()->to("/admin/businesses/{$businessId}/assets")
+                ->with('error', '자산 연동 전표는 자산대장에서 관리하세요.');
+        }
+
+        return null;
     }
 
     /**
