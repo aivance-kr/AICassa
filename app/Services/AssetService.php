@@ -134,12 +134,14 @@ final class AssetService
 
     /**
      * 사업장 주업종코드 기준 기본 내용연수(자산 등록 폼 안내용). 없으면 null.
+     *
+     * 아직 취득일이 없는 신규 등록 안내이므로 현재 연도에 유효한 기준을 보여준다.
      */
     public function defaultUsefulLife(int $userId, int $businessId): ?int
     {
         $this->assertOwned($userId, $businessId);
 
-        return $this->industryUsefulLife($businessId);
+        return $this->industryUsefulLife($businessId, (int) date('Y'));
     }
 
     /**
@@ -384,11 +386,13 @@ final class AssetService
      */
     private function resolveDepreciation(int $businessId, AssetData $data, array $row): array
     {
-        $usefulLife = $data->usefulLife ?? $this->industryUsefulLife($businessId);
+        // 내용연수·상각률은 취득연도에 유효한 세법 기준으로 스냅샷한다(과거 재현 보장).
+        $acquiredYear = (int) substr($data->acquiredAt, 0, 4);
+        $usefulLife   = $data->usefulLife ?? $this->industryUsefulLife($businessId, $acquiredYear);
 
         $rate = null;
         if ($data->depreciationMethod !== null && $usefulLife !== null) {
-            $rate = $this->rates->rateFor($data->depreciationMethod, $usefulLife);
+            $rate = $this->rates->rateFor($data->depreciationMethod, $usefulLife, $acquiredYear);
         }
 
         $row['useful_life']       = $usefulLife;
@@ -398,9 +402,9 @@ final class AssetService
     }
 
     /**
-     * 사업장 주업종코드로 업종별 자산 내용연수를 조회한다(없으면 null).
+     * 사업장 주업종코드로 취득연도에 유효한 업종별 자산 내용연수를 조회한다(없으면 null).
      */
-    private function industryUsefulLife(int $businessId): ?int
+    private function industryUsefulLife(int $businessId, int $fiscalYear): ?int
     {
         $business = $this->businesses->find($businessId);
         $code     = $business['industry_code'] ?? null;
@@ -408,7 +412,7 @@ final class AssetService
             return null;
         }
 
-        return $this->industryCodes->usefulLifeFor((string) $code);
+        return $this->industryCodes->usefulLifeFor((string) $code, $fiscalYear);
     }
 
     private function assertOwned(int $userId, int $businessId): void

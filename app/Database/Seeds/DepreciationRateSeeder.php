@@ -6,10 +6,17 @@ use CodeIgniter\Database\Seeder;
 
 /**
  * 내용연수별 상각률(정액법/정률법) — 국세청 간편장부 프로그램 v3.4 원본 표.
- * 내용연수 2~60년.
+ * 내용연수 2~60년. 시행연도 2023 기준선(as-of 조회의 최초 룰셋).
+ *
+ * 세법 개정으로 상각률표가 바뀌면 새 effective_year 행을 추가한다(기존 행 유지).
  */
 class DepreciationRateSeeder extends Seeder
 {
+    /**
+     * 원본 표의 시행연도(기준선)
+     */
+    private const BASELINE_YEAR = 2023;
+
     public function run(): void
     {
         $now  = date('Y-m-d H:i:s');
@@ -76,13 +83,15 @@ class DepreciationRateSeeder extends Seeder
         ];
 
         foreach ($rows as &$row) {
-            $row['created_at'] = $now;
-            $row['updated_at'] = $now;
+            $row['effective_year'] = self::BASELINE_YEAR;
+            $row['created_at']     = $now;
+            $row['updated_at']     = $now;
         }
         unset($row);
 
-        // 재실행 안전(멱등): 기존 데이터 비우고 재삽입 (DELETE, FK 안전)
-        $this->db->table('depreciation_rates')->emptyTable();
+        // 기준선(2023) 재실행 안전(멱등): 해당 시행연도 행만 비우고 재삽입한다.
+        // 다른 시행연도(개정 세법) 행은 보존한다.
+        $this->db->table('depreciation_rates')->where('effective_year', self::BASELINE_YEAR)->delete();
         $this->db->table('depreciation_rates')->insertBatch($rows);
     }
 }

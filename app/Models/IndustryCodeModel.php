@@ -18,19 +18,35 @@ class IndustryCodeModel extends Model
     /**
      * @var list<string>
      */
-    protected $allowedFields = ['code', 'name', 'useful_life'];
+    protected $allowedFields = ['code', 'effective_year', 'name', 'useful_life'];
 
     /**
-     * 업종코드로 내용연수를 조회한다. 코드가 없거나 내용연수 미지정이면 null.
+     * 업종코드로 귀속연도에 유효한 내용연수를 조회한다.
+     * 코드가 없거나 내용연수 미지정이면 null.
+     *
+     * as-of 규칙: `시행연도 <= 귀속연도` 중 가장 최근 시행연도의 내용연수를 사용한다.
+     * 귀속연도가 최초 시행연도 이전이면 가장 이른 시행연도 연계표로 폴백한다.
      */
-    public function usefulLifeFor(string $code): ?int
+    public function usefulLifeFor(string $code, int $fiscalYear): ?int
     {
         $code = trim($code);
         if ($code === '') {
             return null;
         }
 
-        $row = $this->select('useful_life')->where('code', $code)->first();
+        $row = $this->select('useful_life')
+            ->where('code', $code)
+            ->where('effective_year <=', $fiscalYear)
+            ->orderBy('effective_year', 'DESC')
+            ->first();
+
+        // 최초 시행연도 이전 취득분은 가장 이른 시행연도 연계표를 적용한다.
+        if ($row === null) {
+            $row = $this->select('useful_life')
+                ->where('code', $code)
+                ->orderBy('effective_year', 'ASC')
+                ->first();
+        }
         if ($row === null || $row['useful_life'] === null) {
             return null;
         }

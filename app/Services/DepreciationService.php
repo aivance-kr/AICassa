@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\DTOs\TaxRuleSet;
 use App\Enums\DepreciationMethod;
 
 /**
@@ -13,19 +14,25 @@ use App\Enums\DepreciationMethod;
  *  - 비망가액 1,000원: 자산을 완전상각하지 않고 장부상 최소가액 1,000원을 남긴다
  *  - 정률법 잔존가액 = Int(취득금액 / 20) (취득금액의 5%)
  *
+ * 비망가액·정률법 잔존가액 제수 등 세법 스칼라 값은 상각 대상 연도별 세법 룰셋
+ * (TaxRuleSet)에서 가져온다. 여러 연도에 걸친 스케줄은 각 연도에 유효한 룰셋을
+ * 적용하므로 개정 세법이 걸친 기간도 연도별로 정확히 재현된다.
+ *
  * 모든 중간계산은 원 단위 절사(VBA Int) 규칙을 따른다.
  */
 final class DepreciationService
 {
     /**
-     * 비망가액(장부상 남기는 최소 가액)
-     */
-    public const MEMORANDUM_VALUE = 1000;
-
-    /**
      * 무한 루프 방지용 최대 상각 연수
      */
     private const MAX_YEARS = 100;
+
+    private TaxRuleResolver $rules;
+
+    public function __construct(?TaxRuleResolver $rules = null)
+    {
+        $this->rules = $rules ?? service('taxRuleResolver');
+    }
 
     /**
      * 취득~처분(또는 완전상각)까지의 연도별 감가상각 스케줄을 생성한다.
@@ -57,6 +64,7 @@ final class DepreciationService
 
         for ($i = 0; $i < self::MAX_YEARS; $i++) {
             $year   = $acquiredYear + $i;
+            $rule   = $this->rules->forYear($year); // 해당 연도에 유효한 세법 룰셋
             $isAcq  = $year === $acquiredYear;
             $isDisp = $disposalYear !== null && $year === $disposalYear;
 
@@ -65,6 +73,7 @@ final class DepreciationService
                 $acquisitionCost,
                 $bookValue,
                 $rate,
+                $rule,
                 $isAcq ? $acquiredMonth : null,
                 $isDisp ? ($disposalMonth ?? 12) : null,
             );
@@ -80,7 +89,7 @@ final class DepreciationService
             ];
 
             // 처분연도까지만, 또는 비망가액까지 상각 완료 시 종료
-            if ($isDisp || $bookValue <= self::MEMORANDUM_VALUE) {
+            if ($isDisp || $bookValue <= $rule->memorandumValue) {
                 break;
             }
         }
@@ -91,17 +100,21 @@ final class DepreciationService
     /**
      * 한 연도의 감가상각비(한도액)를 계산한다.
      *
-     * @param int|null $acquiredMonth 취득연도인 경우 취득월, 아니면 null
-     * @param int|null $disposalMonth 처분연도인 경우 처분월, 아니면 null
+     * @param TaxRuleSet $rule          해당 연도에 유효한 세법 룰셋(비망가액·정률법 잔존가액 제수)
+     * @param int|null   $acquiredMonth 취득연도인 경우 취득월, 아니면 null
+     * @param int|null   $disposalMonth 처분연도인 경우 처분월, 아니면 null
      */
     public function annualDepreciation(
         DepreciationMethod $method,
         int $acquisitionCost,
         int $bookValue,
         float $rate,
+        TaxRuleSet $rule,
         ?int $acquiredMonth = null,
         ?int $disposalMonth = null,
     ): int {
+        $memorandum = $rule->memorandumValue;
+
         // 계산한도액: 정액법=취득금액 기준, 정률법=직전장부가액 기준
         $base  = $method === DepreciationMethod::StraightLine ? $acquisitionCost : $bookValue;
         $limit = (int) ($base * $rate);
@@ -114,16 +127,17 @@ final class DepreciationService
             $limit = (int) ($limit / 12 * $disposalMonth);
         }
 
-        // 비망가액 처리 — 상각 후 장부가액이 하한 이하로 내려가지 않도록 1,000원을 남긴다
+        // 비망가액 처리 — 상각 후 장부가액이 하한 이하로 내려가지 않도록 비망가액을 남긴다
         if ($method === DepreciationMethod::StraightLine) {
             $limit = min($limit, $bookValue);
-            if (($bookValue - $limit) <= self::MEMORANDUM_VALUE) {
-                $limit = $bookValue - self::MEMORANDUM_VALUE;
+            if (($bookValue - $limit) <= $memorandum) {
+                $limit = $bookValue - $memorandum;
             }
         } else {
-            $residual = intdiv($acquisitionCost, 20); // 정률법 잔존가액 = 취득금액의 5%
+            // 정률법 잔존가액 = 취득금액 ÷ 제수(예: 20 → 5%)
+            $residual = intdiv($acquisitionCost, $rule->decliningResidualDivisor);
             if (($bookValue - $limit) <= $residual) {
-                $limit = $bookValue - self::MEMORANDUM_VALUE;
+                $limit = $bookValue - $memorandum;
             }
         }
 

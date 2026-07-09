@@ -201,11 +201,12 @@ final class LedgerService
      */
     private function toRow(int $businessId, LedgerData $data): array
     {
-        $vat = $this->vat->calculate($data->supplyAmount, $data->evidenceType ?? EvidenceType::Other);
+        $fiscalYear = (int) substr($data->entryDate, 0, 4);
+        $vat        = $this->vat->calculate($data->supplyAmount, $data->evidenceType ?? EvidenceType::Other, $fiscalYear);
 
         return [
             'business_id'   => $businessId,
-            'fiscal_year'   => (int) substr($data->entryDate, 0, 4),
+            'fiscal_year'   => $fiscalYear,
             'entry_date'    => $data->entryDate,
             'entry_type'    => $data->entryType->value,
             'account_id'    => $data->accountId,

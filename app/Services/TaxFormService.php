@@ -32,6 +32,7 @@ final class TaxFormService
     private TaxAdjustmentModel $adjustments;
     private LedgerService $ledger;
     private AssetService $assets;
+    private TaxRuleResolver $taxRules;
 
     public function __construct(
         ?BusinessModel $businesses = null,
@@ -39,27 +40,30 @@ final class TaxFormService
         ?TaxAdjustmentModel $adjustments = null,
         ?LedgerService $ledger = null,
         ?AssetService $assets = null,
+        ?TaxRuleResolver $taxRules = null,
     ) {
         $this->businesses  = $businesses ?? model(BusinessModel::class);
         $this->inventories = $inventories ?? model(InventoryModel::class);
         $this->adjustments = $adjustments ?? model(TaxAdjustmentModel::class);
         $this->ledger      = $ledger ?? service('ledgerService');
         $this->assets      = $assets ?? service('assetService');
+        $this->taxRules    = $taxRules ?? service('taxRuleResolver');
     }
 
     /**
-     * 귀속연도에 해당하는 서식 버전 정보.
+     * 귀속연도에 해당하는 서식 버전 및 적용 세법 기준 정보.
      *
-     * @return array{year:int, version:string, supported:bool}
+     * @return array{year:int, version:string, supported:bool, rule_effective_year:int}
      */
     public function formVersion(int $year): array
     {
         $config = config(TaxFormConfig::class);
 
         return [
-            'year'      => $year,
-            'version'   => $config->versions[$year] ?? $config->latest,
-            'supported' => $year >= $config->earliestSupportedYear,
+            'year'                => $year,
+            'version'             => $config->versions[$year] ?? $config->latest,
+            'supported'           => $year >= $config->earliestSupportedYear,
+            'rule_effective_year' => $this->taxRules->forYear($year)->effectiveYear,
         ];
     }
 

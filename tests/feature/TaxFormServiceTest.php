@@ -182,5 +182,9 @@ final class TaxFormServiceTest extends CIUnitTestCase
         // 지원 하한 이전 연도 → 미지원 플래그
         $old = $this->service->formVersion(2000);
         $this->assertFalse($old['supported']);
+
+        // 적용 세법 기준연도(as-of) 노출 — 기본 룰셋은 2023 기준선
+        $this->assertSame(2023, $v2024['rule_effective_year']);
+        $this->assertSame(2023, $future['rule_effective_year']);
     }
 }

@@ -1,5 +1,65 @@
 # CodeIgniter 4 Application Starter
 
+---
+
+## 개정세법 버전 관리 (Tax Rule Versioning)
+
+세법은 매년 개정되고, 개정 내용은 원칙적으로 개정 이후 개시하는 **과세연도(귀속분)부터** 적용된다.
+따라서 2025 귀속분(2026년 5월 신고)은 기존 세법으로, 2026 귀속분(2027년 5월 신고)은 개정 세법으로
+계산되어야 하며, 과거 귀속연도 신고서를 다시 열어도 **그 연도의 세법으로 동일하게 재현**되어야 한다.
+
+이를 위해 세법이 정하는 값을 **시행연도(effective_year) 기준 버전**으로 관리한다.
+
+### 조회 규칙 — as-of
+
+귀속연도 Y로 계산할 때, `시행연도 <= Y` 중 **가장 최근 시행연도**의 값을 적용한다.
+값이 바뀌지 않은 연도는 별도 항목 없이 직전 룰셋을 그대로 상속하므로, 불변 값을 연도마다
+중복 저장하지 않는다. 귀속연도가 최초 시행연도 이전이면 **가장 이른 시행연도** 값으로 폴백한다.
+
+### 구성 (하이브리드)
+
+| 대상 | 관리 위치 | 조회 |
+|---|---|---|
+| 내용연수별 상각률표 | `depreciation_rates` 테이블 `effective_year` 컬럼 | `DepreciationRateModel::rateFor($method, $life, $year)` |
+| 업종별 기준 내용연수 | `industry_codes` 테이블 `effective_year` 컬럼 | `IndustryCodeModel::usefulLifeFor($code, $year)` |
+| 스칼라 상수(부가세 제수·비망가액·정률 잔존율) | `app/Config/TaxRules.php` 시행연도별 룰셋 | `TaxRuleResolver::forYear($year): TaxRuleSet` |
+
+- **표 형태 참조데이터**는 DB에 시행연도 복합 유니크(`(useful_life, effective_year)`,
+  `(code, effective_year)`)로 보관한다. 개정 시 새 `effective_year` 행을 **추가**한다(기존 행 유지).
+- **스칼라 상수**는 `Config\TaxRules::$sets`(`시행연도 => 파라미터`)로 보관하고,
+  `TaxRuleResolver`가 as-of로 해석해 `TaxRuleSet`(읽기 전용 DTO)으로 반환한다.
+- 감가상각 스케줄처럼 **여러 연도에 걸친 계산은 각 연도에 유효한 룰셋**을 적용하므로,
+  개정 세법이 걸친 기간도 연도별로 정확히 재현된다.
+
+기준선은 **2023 시행연도**(국세청 간편장부 프로그램 v3.4 원본 규칙)이며,
+현재 룰셋은 2023 하나뿐이라 계산 결과는 종전과 100% 동일하다.
+
+### 개정 세법이 확정되면
+
+1. **상각률표/업종코드 개정** — 새 시행연도로 시더에 행을 추가하거나 임포트한다.
+   (예: `effective_year = 2027` 행 삽입. 기존 2023 행은 삭제하지 않는다.)
+2. **스칼라 상수 개정**(부가세율 등) — `app/Config/TaxRules.php`의 `$sets`에 시행연도 키를 추가한다.
+   ```php
+   public array $sets = [
+       2023 => ['vat_divisor' => 10, 'memorandum_value' => 1000, 'declining_residual_divisor' => 20],
+       // 예: 2027년부터 부가세율이 개정되는 경우(값은 실제 개정 수치로 교체)
+       2027 => ['vat_divisor' => 10, 'memorandum_value' => 1000, 'declining_residual_divisor' => 20],
+   ];
+   ```
+3. **신고서식 개정** — `app/Config/TaxForm.php`의 `$versions`에 귀속연도별 서식 버전을 추가하고
+   `$latest`를 갱신한다. 신고서 화면에는 적용된 세법 기준연도(`rule_effective_year`)가 함께 노출된다.
+
+기존 데이터·전표는 손대지 않고 **행/설정 항목만 추가**하면 해당 귀속연도부터 자동으로 분기된다.
+
+### 관련 파일
+
+- `app/Config/TaxRules.php` · `app/DTOs/TaxRuleSet.php` · `app/Services/TaxRuleResolver.php`
+- `app/Models/DepreciationRateModel.php` · `app/Models/IndustryCodeModel.php`
+- `app/Services/VatCalculatorService.php` · `app/Services/DepreciationService.php`
+- 마이그레이션: `*_AddEffectiveYearToDepreciationRates.php` · `*_AddEffectiveYearToIndustryCodes.php`
+
+---
+
 ## What is CodeIgniter?
 
 CodeIgniter is a PHP full-stack web framework that is light, fast, flexible and secure.

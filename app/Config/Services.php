@@ -11,6 +11,7 @@ use App\Services\PartnerService;
 use App\Services\SummaryService;
 use App\Services\TaxFormExporter;
 use App\Services\TaxFormService;
+use App\Services\TaxRuleResolver;
 use App\Services\VatCalculatorService;
 use CodeIgniter\Config\BaseService;
 
@@ -51,6 +52,18 @@ class Services extends BaseService
         }
 
         return new DepreciationService();
+    }
+
+    /**
+     * 시행연도 기준 세법 룰셋 해석 서비스.
+     */
+    public static function taxRuleResolver(bool $getShared = true): TaxRuleResolver
+    {
+        if ($getShared) {
+            return static::getSharedInstance('taxRuleResolver');
+        }
+
+        return new TaxRuleResolver();
     }
 
     /**
