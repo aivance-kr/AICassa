@@ -20,7 +20,7 @@ class LedgerEntryModel extends Model
      */
     protected $allowedFields = [
         'business_id', 'fiscal_year', 'entry_date', 'entry_type',
-        'account_id', 'partner_id', 'description', 'supply_amount',
+        'account_id', 'partner_id', 'asset_id', 'description', 'supply_amount',
         'vat', 'evidence_type',
     ];
 

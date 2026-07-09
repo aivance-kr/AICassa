@@ -74,8 +74,15 @@ final class AdminAssetFlowTest extends CIUnitTestCase
             ->assertRedirect();
 
         $entries = (new LedgerService())->listForBusiness((int) $this->user->id, $this->businessId, ['fiscal_year' => 2024]);
-        $this->assertCount(1, $entries);
-        $this->assertSame(2_000_000, (int) $entries[0]['supply_amount']);
-        $this->assertSame('감가상각비', $entries[0]['account_name']);
+        // 감가상각비(비용) 전표만 확인 — 자산 등록 시 자동 생성된 자산_구입 전표는 제외
+        $expenses = array_values(array_filter($entries, static fn ($e) => $e['entry_type'] === 'expense'));
+        $this->assertCount(1, $expenses);
+        $this->assertSame(2_000_000, (int) $expenses[0]['supply_amount']);
+        $this->assertSame('감가상각비', $expenses[0]['account_name']);
+
+        // 자산_구입 전표도 장부에 자동 반영되었는지 확인
+        $purchase = array_values(array_filter($entries, static fn ($e) => $e['entry_type'] === 'asset_purchase'));
+        $this->assertCount(1, $purchase);
+        $this->assertSame(10_000_000, (int) $purchase[0]['supply_amount']);
     }
 }
