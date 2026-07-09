@@ -133,6 +133,16 @@ final class AssetService
     }
 
     /**
+     * 사업장 주업종코드 기준 기본 내용연수(자산 등록 폼 안내용). 없으면 null.
+     */
+    public function defaultUsefulLife(int $userId, int $businessId): ?int
+    {
+        $this->assertOwned($userId, $businessId);
+
+        return $this->industryUsefulLife($businessId);
+    }
+
+    /**
      * 자산의 연도별 감가상각 스케줄. 상각 정보가 부족하면 빈 배열.
      *
      * @return list<array{year:int, depreciation:int, accumulated:int, book_value:int}>
