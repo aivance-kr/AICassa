@@ -39,5 +39,20 @@ $routes->group('admin', ['filter' => 'session'], static function ($routes): void
         $routes->post('(:num)/ledger/(:num)', 'Admin\LedgerController::update/$1/$2');
         $routes->post('(:num)/ledger/(:num)/delete', 'Admin\LedgerController::delete/$1/$2');
         $routes->post('(:num)/ledger/(:num)/copy', 'Admin\LedgerController::copy/$1/$2');
+
+        // 리포트 — 영업현황표 · 신고서식
+        $routes->get('(:num)/reports/business-status', 'Admin\ReportController::businessStatus/$1');
+        $routes->get('(:num)/reports/tax-forms', 'Admin\ReportController::taxForms/$1');
+        $routes->post('(:num)/reports/tax-forms/inventory', 'Admin\ReportController::saveInventory/$1');
+
+        // 자산대장 · 감가상각
+        $routes->get('(:num)/assets', 'Admin\AssetController::index/$1');
+        $routes->get('(:num)/assets/new', 'Admin\AssetController::new/$1');
+        $routes->post('(:num)/assets', 'Admin\AssetController::create/$1');
+        $routes->get('(:num)/assets/(:num)/edit', 'Admin\AssetController::edit/$1/$2');
+        $routes->post('(:num)/assets/(:num)', 'Admin\AssetController::update/$1/$2');
+        $routes->post('(:num)/assets/(:num)/delete', 'Admin\AssetController::delete/$1/$2');
+        $routes->get('(:num)/assets/(:num)/schedule', 'Admin\AssetController::schedule/$1/$2');
+        $routes->post('(:num)/assets/(:num)/depreciation', 'Admin\AssetController::postDepreciation/$1/$2');
     });
 });

@@ -50,18 +50,18 @@ final class LedgerService
     {
         $this->assertOwned($userId, $businessId);
 
-        $entries     = $this->ledger->filtered($businessId, $filters);
-        $accountMap  = $this->accounts->nameMap();
-        $partnerMap  = $this->partnerNameMap($businessId);
+        $entries    = $this->ledger->filtered($businessId, $filters);
+        $accountMap = $this->accounts->nameMap();
+        $partnerMap = $this->partnerNameMap($businessId);
 
         return array_map(static function (array $row) use ($accountMap, $partnerMap): array {
-            $accountId              = $row['account_id'] === null ? null : (int) $row['account_id'];
-            $partnerId              = $row['partner_id'] === null ? null : (int) $row['partner_id'];
-            $row['account_name']    = $accountId !== null ? ($accountMap[$accountId] ?? '') : '';
-            $row['partner_name']    = $partnerId !== null ? ($partnerMap[$partnerId] ?? '') : '';
+            $accountId               = $row['account_id'] === null ? null : (int) $row['account_id'];
+            $partnerId               = $row['partner_id'] === null ? null : (int) $row['partner_id'];
+            $row['account_name']     = $accountId !== null ? ($accountMap[$accountId] ?? '') : '';
+            $row['partner_name']     = $partnerId !== null ? ($partnerMap[$partnerId] ?? '') : '';
             $row['entry_type_label'] = (EntryType::tryFrom((string) $row['entry_type']) ?? EntryType::Expense)->label();
-            $evidence               = EvidenceType::tryFrom((string) ($row['evidence_type'] ?? ''));
-            $row['evidence_label']  = $evidence?->label() ?? '';
+            $evidence                = EvidenceType::tryFrom((string) ($row['evidence_type'] ?? ''));
+            $row['evidence_label']   = $evidence?->label() ?? '';
 
             return $row;
         }, $entries);
@@ -240,8 +240,8 @@ final class LedgerService
     private function categoryFor(EntryType $type): AccountCategory
     {
         return match ($type) {
-            EntryType::Income                             => AccountCategory::Income,
-            EntryType::Expense                            => AccountCategory::Expense,
+            EntryType::Income                                  => AccountCategory::Income,
+            EntryType::Expense                                 => AccountCategory::Expense,
             EntryType::AssetPurchase, EntryType::AssetDisposal => AccountCategory::Asset,
         };
     }
@@ -252,6 +252,7 @@ final class LedgerService
     private function partnerNameMap(int $businessId): array
     {
         $map = [];
+
         foreach ($this->partners->forBusiness($businessId) as $row) {
             $map[(int) $row['id']] = (string) $row['name'];
         }

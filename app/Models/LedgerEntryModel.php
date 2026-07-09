@@ -15,14 +15,18 @@ class LedgerEntryModel extends Model
     protected $useSoftDeletes = true;
     protected $useTimestamps  = true;
 
-    /** @var list<string> */
+    /**
+     * @var list<string>
+     */
     protected $allowedFields = [
         'business_id', 'fiscal_year', 'entry_date', 'entry_type',
         'account_id', 'partner_id', 'description', 'supply_amount',
         'vat', 'evidence_type',
     ];
 
-    /** @var array<string, string> */
+    /**
+     * @var array<string, string>
+     */
     protected $validationRules = [
         'business_id'   => 'required|is_natural_no_zero',
         'entry_date'    => 'required|valid_date[Y-m-d]',

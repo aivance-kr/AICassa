@@ -15,7 +15,9 @@ class AccountModel extends Model
     protected $returnType    = 'array';
     protected $useTimestamps = true;
 
-    /** @var list<string> */
+    /**
+     * @var list<string>
+     */
     protected $allowedFields = ['category', 'name', 'is_manufacturing', 'sort_order'];
 
     /**
@@ -53,6 +55,7 @@ class AccountModel extends Model
     public function nameMap(): array
     {
         $map = [];
+
         foreach ($this->findAll() as $row) {
             $map[(int) $row['id']] = (string) $row['name'];
         }

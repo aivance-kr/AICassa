@@ -16,5 +16,6 @@ final readonly class ImportResult
         public int $imported,
         public int $skipped,
         public array $errors,
-    ) {}
+    ) {
+    }
 }

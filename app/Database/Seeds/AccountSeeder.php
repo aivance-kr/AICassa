@@ -53,6 +53,7 @@ class AccountSeeder extends Seeder
         ];
 
         $rows = [];
+
         foreach ($defs as $i => [$category, $name, $isMfg]) {
             $rows[] = [
                 'category'         => $category,

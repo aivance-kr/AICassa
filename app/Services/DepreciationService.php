@@ -17,22 +17,26 @@ use App\Enums\DepreciationMethod;
  */
 final class DepreciationService
 {
-    /** 비망가액(장부상 남기는 최소 가액) */
+    /**
+     * 비망가액(장부상 남기는 최소 가액)
+     */
     public const MEMORANDUM_VALUE = 1000;
 
-    /** 무한 루프 방지용 최대 상각 연수 */
+    /**
+     * 무한 루프 방지용 최대 상각 연수
+     */
     private const MAX_YEARS = 100;
 
     /**
      * 취득~처분(또는 완전상각)까지의 연도별 감가상각 스케줄을 생성한다.
      *
-     * @param DepreciationMethod $method          상각방법
-     * @param int                $acquisitionCost 취득금액(원)
-     * @param float              $rate            상각률(0~1)
-     * @param int                $acquiredYear    취득연도
-     * @param int                $acquiredMonth   취득월(1~12)
-     * @param int|null           $disposalYear    처분연도(미처분이면 null)
-     * @param int|null           $disposalMonth   처분월(1~12, 미처분이면 null)
+     * @param DepreciationMethod $method             상각방법
+     * @param int                $acquisitionCost    취득금액(원)
+     * @param float              $rate               상각률(0~1)
+     * @param int                $acquiredYear       취득연도
+     * @param int                $acquiredMonth      취득월(1~12)
+     * @param int|null           $disposalYear       처분연도(미처분이면 null)
+     * @param int|null           $disposalMonth      처분월(1~12, 미처분이면 null)
      * @param int                $openingAccumulated 기초 감가상각누계액(전기말)
      *
      * @return list<array{year:int, depreciation:int, accumulated:int, book_value:int}>

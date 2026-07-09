@@ -73,7 +73,8 @@ class Filters extends BaseFilters
     public array $globals = [
         'before' => [
             // 'honeypot',
-            // 'csrf',
+            // CSRF 보호: 세션 기반 웹/Admin 폼에 적용. JWT 무상태 API(api/*)는 제외.
+            'csrf' => ['except' => ['api/*']],
             // 'invalidchars',
         ],
         'after' => [
@@ -107,4 +108,15 @@ class Filters extends BaseFilters
      * @var array<string, array<string, list<string>>>
      */
     public array $filters = [];
+
+    public function __construct()
+    {
+        parent::__construct();
+
+        // 피처 테스트는 CSRF 토큰 없이 POST 하므로 테스트 환경에서는 CSRF 미적용.
+        // (운영/개발 환경에서는 그대로 활성)
+        if (ENVIRONMENT === 'testing') {
+            unset($this->globals['before']['csrf']);
+        }
+    }
 }

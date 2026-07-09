@@ -11,7 +11,8 @@ final readonly class PartnerData
         public string $name,
         public ?string $bizRegNo = null,
         public ?string $phone = null,
-    ) {}
+    ) {
+    }
 
     /**
      * @param array<string, mixed> $data

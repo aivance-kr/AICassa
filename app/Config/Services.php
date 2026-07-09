@@ -2,11 +2,14 @@
 
 namespace Config;
 
+use App\Services\AssetService;
 use App\Services\BusinessService;
 use App\Services\DepreciationService;
 use App\Services\LedgerImportService;
 use App\Services\LedgerService;
 use App\Services\PartnerService;
+use App\Services\SummaryService;
+use App\Services\TaxFormService;
 use App\Services\VatCalculatorService;
 use CodeIgniter\Config\BaseService;
 
@@ -95,5 +98,41 @@ class Services extends BaseService
         }
 
         return new LedgerImportService();
+    }
+
+    /**
+     * 영업현황표(집계) 서비스.
+     */
+    public static function summaryService(bool $getShared = true): SummaryService
+    {
+        if ($getShared) {
+            return static::getSharedInstance('summaryService');
+        }
+
+        return new SummaryService();
+    }
+
+    /**
+     * 자산대장·감가상각 서비스.
+     */
+    public static function assetService(bool $getShared = true): AssetService
+    {
+        if ($getShared) {
+            return static::getSharedInstance('assetService');
+        }
+
+        return new AssetService();
+    }
+
+    /**
+     * 종합소득세 신고서식 서비스.
+     */
+    public static function taxFormService(bool $getShared = true): TaxFormService
+    {
+        if ($getShared) {
+            return static::getSharedInstance('taxFormService');
+        }
+
+        return new TaxFormService();
     }
 }

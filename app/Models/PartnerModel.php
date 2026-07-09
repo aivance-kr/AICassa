@@ -15,10 +15,14 @@ class PartnerModel extends Model
     protected $useSoftDeletes = true;
     protected $useTimestamps  = true;
 
-    /** @var list<string> */
+    /**
+     * @var list<string>
+     */
     protected $allowedFields = ['business_id', 'name', 'biz_reg_no', 'phone'];
 
-    /** @var array<string, string> */
+    /**
+     * @var array<string, string>
+     */
     protected $validationRules = [
         'business_id' => 'required|is_natural_no_zero',
         'name'        => 'required|max_length[200]',

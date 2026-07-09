@@ -9,12 +9,12 @@ namespace App\Enums;
  */
 enum EvidenceType: string
 {
-    case TaxInvoice   = 'tax_invoice';    // 세금계산서
-    case Invoice      = 'invoice';        // 계산서(면세)
-    case CreditCard   = 'credit_card';    // 신용카드
-    case CashReceipt  = 'cash_receipt';   // 현금영수증
+    case TaxInvoice    = 'tax_invoice';    // 세금계산서
+    case Invoice       = 'invoice';        // 계산서(면세)
+    case CreditCard    = 'credit_card';    // 신용카드
+    case CashReceipt   = 'cash_receipt';   // 현금영수증
     case SimpleReceipt = 'simple_receipt'; // 간이영수증
-    case Other        = 'other';          // 기타
+    case Other         = 'other';          // 기타
 
     /**
      * 부가세가 발생하는(과세) 증빙 여부.

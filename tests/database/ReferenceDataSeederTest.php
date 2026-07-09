@@ -15,8 +15,8 @@ final class ReferenceDataSeederTest extends CIUnitTestCase
     use DatabaseTestTrait;
 
     // null = 모든 네임스페이스(App 포함)의 마이그레이션 실행
-    protected $namespace = null;
-    protected $seed      = ReferenceDataSeeder::class;
+    protected $namespace;
+    protected $seed = ReferenceDataSeeder::class;
 
     /**
      * 핵심 테이블이 모두 생성되었는지.
@@ -28,6 +28,7 @@ final class ReferenceDataSeederTest extends CIUnitTestCase
             'ledger_entries', 'assets', 'inventories',
             'depreciation_rates', 'industry_codes',
         ];
+
         foreach ($tables as $table) {
             $this->assertTrue(
                 $this->db->tableExists($table),

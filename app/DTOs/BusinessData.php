@@ -18,7 +18,8 @@ final readonly class BusinessData
         public ?string $industryName = null,
         public ?string $incomeType = null,
         public bool $isManufacturing = false,
-    ) {}
+    ) {
+    }
 
     /**
      * @param array<string, mixed> $data

@@ -1,5 +1,9 @@
 <?php
 
+use App\Database\Seeds\AccountSeeder;
+use App\DTOs\LedgerData;
+use App\Enums\EntryType;
+use App\Enums\EvidenceType;
 use App\Models\AccountModel;
 use App\Models\BusinessModel;
 use App\Services\LedgerService;
@@ -9,6 +13,7 @@ use CodeIgniter\Shield\Test\AuthenticationTesting;
 use CodeIgniter\Test\CIUnitTestCase;
 use CodeIgniter\Test\DatabaseTestTrait;
 use CodeIgniter\Test\FeatureTestTrait;
+use Config\Services;
 
 /**
  * Admin 장부 화면 — 인증·라우팅·입력 동작 통합 검증.
@@ -21,14 +26,14 @@ final class AdminLedgerFlowTest extends CIUnitTestCase
     use FeatureTestTrait;
     use AuthenticationTesting;
 
-    protected $seed      = \App\Database\Seeds\AccountSeeder::class;
-    protected $namespace = null;
-
+    protected $seed = AccountSeeder::class;
+    protected $namespace;
     private User $user;
     private int $businessId;
 
     protected function setUp(): void
     {
+        Services::reset(); // Shield 인증/세션 상태 격리(테스트 순서 의존 방지)
         parent::setUp();
 
         $users = new UserModel();
@@ -89,12 +94,12 @@ final class AdminLedgerFlowTest extends CIUnitTestCase
     public function testCopyCreatesDuplicate(): void
     {
         $svc = new LedgerService();
-        $id  = $svc->create((int) $this->user->id, $this->businessId, new \App\DTOs\LedgerData(
+        $id  = $svc->create((int) $this->user->id, $this->businessId, new LedgerData(
             entryDate: '2024-02-01',
-            entryType: \App\Enums\EntryType::Expense,
+            entryType: EntryType::Expense,
             description: '월 임차료',
             supplyAmount: 300_000,
-            evidenceType: \App\Enums\EvidenceType::TaxInvoice,
+            evidenceType: EvidenceType::TaxInvoice,
         ));
 
         $this->actingAs($this->user)

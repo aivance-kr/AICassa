@@ -1,11 +1,13 @@
 <?php
 
+use App\DTOs\BusinessData;
 use CodeIgniter\Shield\Entities\User;
 use CodeIgniter\Shield\Models\UserModel;
 use CodeIgniter\Shield\Test\AuthenticationTesting;
 use CodeIgniter\Test\CIUnitTestCase;
 use CodeIgniter\Test\DatabaseTestTrait;
 use CodeIgniter\Test\FeatureTestTrait;
+use Config\Services;
 
 /**
  * Admin 사업장 화면 — 인증·라우팅·컨트롤러 동작 통합 검증.
@@ -21,7 +23,13 @@ final class AdminBusinessFlowTest extends CIUnitTestCase
     use FeatureTestTrait;
     use AuthenticationTesting;
 
-    protected $namespace = null;
+    protected $namespace;
+
+    protected function setUp(): void
+    {
+        Services::reset(); // Shield 인증/세션 상태 격리(테스트 순서 의존 방지)
+        parent::setUp();
+    }
 
     private function makeUser(): User
     {
@@ -69,7 +77,7 @@ final class AdminBusinessFlowTest extends CIUnitTestCase
     public function testCannotEditOtherUsersBusiness(): void
     {
         $owner = $this->makeUser();
-        $id    = service('businessService')->create((int) $owner->id, \App\DTOs\BusinessData::fromArray(['name' => '내상회']));
+        $id    = service('businessService')->create((int) $owner->id, BusinessData::fromArray(['name' => '내상회']));
 
         $intruder = new UserModel();
         $intruder->save(new User(['username' => 'intruder', 'email' => 'intruder@test.com', 'password' => 'secret12345']));

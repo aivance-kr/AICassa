@@ -20,7 +20,7 @@ class LedgerController extends BaseAdminController
     /**
      * 장부 목록(필터 + 합계).
      */
-    public function index(int $businessId): string|RedirectResponse
+    public function index(int $businessId): RedirectResponse|string
     {
         $business = $this->business($businessId);
         if ($business === null) {
@@ -48,7 +48,7 @@ class LedgerController extends BaseAdminController
     /**
      * 입력 폼.
      */
-    public function new(int $businessId): string|RedirectResponse
+    public function new(int $businessId): RedirectResponse|string
     {
         $business = $this->business($businessId);
         if ($business === null) {
@@ -86,7 +86,7 @@ class LedgerController extends BaseAdminController
     /**
      * 수정 폼.
      */
-    public function edit(int $businessId, int $entryId): string|RedirectResponse
+    public function edit(int $businessId, int $entryId): RedirectResponse|string
     {
         $business = $this->business($businessId);
         if ($business === null) {
@@ -165,7 +165,7 @@ class LedgerController extends BaseAdminController
     /**
      * CSV 업로드 폼.
      */
-    public function importForm(int $businessId): string|RedirectResponse
+    public function importForm(int $businessId): RedirectResponse|string
     {
         $business = $this->business($businessId);
         if ($business === null) {
@@ -178,7 +178,7 @@ class LedgerController extends BaseAdminController
     /**
      * CSV 업로드 처리(일괄 등록).
      */
-    public function import(int $businessId): string|RedirectResponse
+    public function import(int $businessId): RedirectResponse|string
     {
         $business = $this->business($businessId);
         if ($business === null) {
