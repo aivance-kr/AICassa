@@ -35,6 +35,17 @@
     <a href="/admin/businesses/<?= $bid ?>/reports/tax-forms/excel?fiscal_year=<?= (int) $year ?>" class="btn secondary">엑셀 다운로드</a>
 </div>
 
+<!-- 신고 전 AI 이상탐지 -->
+<div id="anomalyPanel" style="border:1px solid var(--border); border-radius:8px; padding:14px 16px; margin-bottom:20px; background:#fff;">
+    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        <strong>신고 전 점검 (AI 이상탐지)</strong>
+        <button type="button" id="anomalyBtn" class="btn secondary">점검 실행</button>
+        <span id="anomalyStatus" class="muted" style="font-size:13px;"></span>
+    </div>
+    <p class="muted" style="margin:8px 0 0; font-size:12px;">증빙·부가세·계정과목·전년비 급증 등을 규칙으로 점검하고, 계정과목 오분류는 AI가 추가로 살펴봅니다. 금액은 항상 시스템이 재계산하며, 결과는 <strong>검토용 초안</strong>입니다.</p>
+    <div id="anomalyResult" style="margin-top:12px;"></div>
+</div>
+
 <!-- 인적사항 -->
 <h2 style="font-size:16px;">인적사항</h2>
 <table class="tbl" style="margin-bottom:20px;">
@@ -166,5 +177,80 @@
     table.tbl th { text-align:left; }
     table.tbl td.num, table.tbl th.num { text-align:right; font-variant-numeric:tabular-nums; }
     table.tbl tr.total th, table.tbl tr.total td { background:#ecfdf5; font-weight:700; }
+    .anomaly-item { border-left:4px solid #d1d5db; padding:8px 12px; margin-bottom:8px; background:#f9fafb; border-radius:4px; }
+    .anomaly-item.high { border-left-color:#dc2626; }
+    .anomaly-item.warning { border-left-color:#d97706; }
+    .anomaly-item.info { border-left-color:#2563eb; }
+    .anomaly-badge { display:inline-block; font-size:11px; font-weight:700; padding:1px 8px; border-radius:10px; margin-right:6px; }
+    .anomaly-badge.high { background:#fee2e2; color:#991b1b; }
+    .anomaly-badge.warning { background:#fef3c7; color:#92400e; }
+    .anomaly-badge.info { background:#dbeafe; color:#1e40af; }
 </style>
+<?= $this->endSection() ?>
+
+<?= $this->section('scripts') ?>
+<script>
+const ANOMALY_URL = '/admin/businesses/<?= (int) $bid ?>/reports/anomalies';
+let ANOMALY_CSRF = '<?= csrf_hash() ?>';
+const ANOMALY_YEAR = <?= (int) $year ?>;
+const SEV_LABEL = { high: '위험', warning: '주의', info: '참고' };
+
+const anomalyBtn = document.getElementById('anomalyBtn');
+const anomalyStatus = document.getElementById('anomalyStatus');
+const anomalyResult = document.getElementById('anomalyResult');
+
+function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+}
+
+anomalyBtn.addEventListener('click', async () => {
+    anomalyBtn.disabled = true;
+    anomalyStatus.textContent = '점검 중… (AI 점검은 다소 걸릴 수 있습니다)';
+    anomalyResult.innerHTML = '';
+
+    const body = new FormData();
+    body.append('fiscal_year', String(ANOMALY_YEAR));
+
+    try {
+        const res = await fetch(ANOMALY_URL, {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': ANOMALY_CSRF },
+            body,
+        });
+        const data = await res.json();
+        if (data.csrf_hash) {
+            ANOMALY_CSRF = data.csrf_hash;
+        }
+        if (!res.ok) {
+            anomalyStatus.textContent = (data.error && data.error.message) || '점검에 실패했습니다.';
+            return;
+        }
+        renderAnomalies(data);
+    } catch (e) {
+        anomalyStatus.textContent = '점검 요청 중 오류가 발생했습니다.';
+    } finally {
+        anomalyBtn.disabled = false;
+    }
+});
+
+function renderAnomalies(data) {
+    const c = data.counts || { high: 0, warning: 0, info: 0 };
+    anomalyStatus.textContent = `위험 ${c.high} · 주의 ${c.warning} · 참고 ${c.info}`;
+
+    if (data.clean || !data.findings || data.findings.length === 0) {
+        anomalyResult.innerHTML = '<p class="muted">점검된 이상 항목이 없습니다. (규칙 기준)</p>';
+        return;
+    }
+
+    anomalyResult.innerHTML = data.findings.map(f => {
+        const sev = f.severity || 'info';
+        const src = f.source === 'ai' ? ' <span class="muted" style="font-size:11px;">AI</span>' : '';
+        return `<div class="anomaly-item ${sev}">`
+            + `<span class="anomaly-badge ${sev}">${SEV_LABEL[sev] || sev}</span>`
+            + `<strong>${escapeHtml(f.title)}</strong>${src}`
+            + `<div class="muted" style="font-size:13px; margin-top:4px;">${escapeHtml(f.detail)}</div>`
+            + `</div>`;
+    }).join('');
+}
+</script>
 <?= $this->endSection() ?>

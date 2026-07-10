@@ -53,6 +53,7 @@ $routes->group('admin', ['filter' => 'session'], static function ($routes): void
         $routes->post('(:num)/reports/tax-forms/adjustments', 'Admin\ReportController::saveAdjustments/$1');
         $routes->get('(:num)/reports/tax-forms/print', 'Admin\ReportController::taxFormsPrint/$1');
         $routes->get('(:num)/reports/tax-forms/excel', 'Admin\ReportController::taxFormsExcel/$1');
+        $routes->post('(:num)/reports/anomalies', 'Admin\ReportController::anomalies/$1');
 
         // 자산대장 · 감가상각
         $routes->get('(:num)/assets', 'Admin\AssetController::index/$1');

@@ -5,6 +5,7 @@ namespace Config;
 use App\Libraries\AnthropicClient;
 use App\Models\TaxParameterModel;
 use App\Services\AccountClassifierService;
+use App\Services\AnomalyDetectionService;
 use App\Services\AssetService;
 use App\Services\BusinessService;
 use App\Services\DepreciationService;
@@ -157,6 +158,19 @@ class Services extends BaseService
 
         // AI 클라이언트는 env 기반 주입(키 없으면 null → 키워드 검색으로 폴백).
         return new LedgerQueryParserService(ai: AnthropicClient::fromEnv());
+    }
+
+    /**
+     * 신고·결산 전 이상탐지 서비스(결정적 규칙 + 선택적 AI 오분류 점검).
+     */
+    public static function anomalyDetectionService(bool $getShared = true): AnomalyDetectionService
+    {
+        if ($getShared) {
+            return static::getSharedInstance('anomalyDetectionService');
+        }
+
+        // AI 클라이언트는 env 기반 주입(키 없으면 null → 결정적 규칙만 수행).
+        return new AnomalyDetectionService(ai: AnthropicClient::fromEnv());
     }
 
     /**
