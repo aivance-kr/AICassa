@@ -55,7 +55,9 @@ php spark swagger:generate    # OpenAPI 스펙 생성 (public/swagger.json)
 php spark routes              # 라우트 목록
 composer test                 # PHPUnit 단독 실행
 composer analyse              # PHPStan 단독 실행
-composer check                # PHPStan + PHPUnit 순차 실행
+composer cs                   # PHP CS Fixer 검사(dry-run) — CI와 동일
+composer cs-fix               # PHP CS Fixer 자동 수정
+composer check                # CS Fixer → PHPStan → PHPUnit 순차 (CI 게이트와 동일, 푸시 전 권장)
 ```
 
 ---
@@ -195,7 +197,7 @@ public function index() { ... }
 코드 작성 후 반드시 통과해야 한다. 레벨 6 (`phpstan.neon`), 대상 `app/` (Views 제외).
 ```bash
 composer analyse   # PHPStan 단독
-composer check     # PHPStan + PHPUnit
+composer check     # CS Fixer → PHPStan → PHPUnit (푸시 전 이걸로 CI 미리 검증)
 ```
 - 새 클래스·메서드는 `array<string, mixed>` 등 제네릭 타입 명시 필수
 - `@phpstan-ignore` 주석으로 억제 금지 — 원인을 찾아 수정
