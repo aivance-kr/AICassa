@@ -9,6 +9,7 @@ use App\Services\DepreciationService;
 use App\Services\LedgerImportService;
 use App\Services\LedgerService;
 use App\Services\PartnerService;
+use App\Services\ReceiptOcrService;
 use App\Services\SummaryService;
 use App\Services\TaxFormExporter;
 use App\Services\TaxFormService;
@@ -127,6 +128,18 @@ class Services extends BaseService
         }
 
         return new LedgerImportService();
+    }
+
+    /**
+     * 영수증/세금계산서 사진 AI 판독 서비스.
+     */
+    public static function receiptOcrService(bool $getShared = true): ReceiptOcrService
+    {
+        if ($getShared) {
+            return static::getSharedInstance('receiptOcrService');
+        }
+
+        return new ReceiptOcrService();
     }
 
     /**

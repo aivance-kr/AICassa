@@ -173,6 +173,7 @@ final class LedgerService
             'supply_amount' => (int) $src['supply_amount'],
             'vat'           => (int) $src['vat'],
             'evidence_type' => $src['evidence_type'],
+            'receipt_path'  => $src['receipt_path'] ?? null,
         ];
 
         if (! $this->ledger->insert($row)) {
@@ -215,6 +216,7 @@ final class LedgerService
             'supply_amount' => $data->supplyAmount,
             'vat'           => $vat,
             'evidence_type' => $data->evidenceType?->value,
+            'receipt_path'  => $data->receiptPath,
         ];
     }
 
@@ -235,6 +237,25 @@ final class LedgerService
 
         if ($data->partnerId !== null && $this->partners->findScoped($businessId, $data->partnerId) === null) {
             throw new ValidationException(['partner_id' => '해당 사업장의 거래처가 아닙니다.']);
+        }
+
+        $this->validateReceiptPath($data->receiptPath);
+    }
+
+    /**
+     * 증빙 첨부 경로 검증. 클라이언트가 hidden 필드로 임의 문자열을 주입할 수 있으므로,
+     * AI 판독이 저장한 랜덤 파일명 형식(receipts/{타임스탬프}_{20 hex}.{ext})과 실제 존재를 확인한다.
+     * (경로 조작·타 파일 참조 방지)
+     */
+    private function validateReceiptPath(?string $receiptPath): void
+    {
+        if ($receiptPath === null) {
+            return;
+        }
+
+        $isValidName = preg_match('/^receipts\/\d+_[0-9a-f]{20}\.[a-z0-9]+$/', $receiptPath) === 1;
+        if (! $isValidName || ! is_file(WRITEPATH . 'uploads/' . $receiptPath)) {
+            throw new ValidationException(['receipt_path' => '유효하지 않은 증빙 첨부입니다.']);
         }
     }
 

@@ -113,6 +113,19 @@ final class LedgerServiceTest extends CIUnitTestCase
         $this->assertSame(30000, (int) $copy['vat']);
     }
 
+    public function testInvalidReceiptPathRejected(): void
+    {
+        // 클라이언트가 hidden 필드로 임의 경로(경로 조작)를 주입하면 저장을 거부한다.
+        $this->expectException(ValidationException::class);
+        $this->service->create($this->userId, $this->businessId, new LedgerData(
+            entryDate: '2024-03-15',
+            entryType: EntryType::Expense,
+            description: '위조 첨부',
+            supplyAmount: 10_000,
+            receiptPath: '../../.env',
+        ));
+    }
+
     public function testOtherUserCannotAccess(): void
     {
         $other = new UserModel();

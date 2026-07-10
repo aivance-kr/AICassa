@@ -17,6 +17,17 @@
 
 <form class="card" method="post" action="<?= $action ?>">
     <?= csrf_field() ?>
+    <input type="hidden" id="receipt_path" name="receipt_path" value="<?= esc($val('receipt_path')) ?>">
+
+    <fieldset style="border:1px solid #e5e7eb; border-radius:8px; padding:12px 16px; margin-bottom:16px;">
+        <legend class="muted" style="padding:0 6px;">영수증·세금계산서 사진으로 자동입력</legend>
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <input type="file" id="receipt_file" accept="image/jpeg,image/png,image/webp">
+            <button type="button" id="scanBtn" class="btn secondary">AI 판독</button>
+            <span id="scanStatus" class="muted"></span>
+        </div>
+        <p class="muted" style="margin:8px 0 0;">사진을 올리고 <strong>AI 판독</strong>을 누르면 아래 항목이 자동으로 채워집니다. 내용을 사진과 대조·확인한 뒤 저장하세요.</p>
+    </fieldset>
 
     <label>구분 <span style="color:#dc2626">*</span></label>
     <div style="display:flex; gap:16px;">
@@ -96,5 +107,89 @@ document.getElementById('supply_amount').addEventListener('input', updateVat);
 document.getElementById('evidence_type').addEventListener('change', updateVat);
 renderAccounts();
 updateVat();
+
+// ── 영수증 사진 AI 판독 → 폼 자동채움 ──────────────────────────────
+const RECOGNIZE_URL = '/admin/businesses/<?= (int) $bid ?>/ledger/receipts/recognize';
+const CSRF_INPUT = document.querySelector('input[name="<?= csrf_token() ?>"]');
+const scanBtn = document.getElementById('scanBtn');
+const scanStatus = document.getElementById('scanStatus');
+
+function setStatus(msg, isError = false) {
+    scanStatus.textContent = msg;
+    scanStatus.style.color = isError ? '#dc2626' : '';
+}
+
+scanBtn.addEventListener('click', async () => {
+    const file = document.getElementById('receipt_file').files[0];
+    if (!file) {
+        setStatus('먼저 사진 파일을 선택하세요.', true);
+        return;
+    }
+
+    const body = new FormData();
+    body.append('receipt', file);
+
+    scanBtn.disabled = true;
+    setStatus('판독 중…');
+
+    try {
+        const res = await fetch(RECOGNIZE_URL, {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': CSRF_INPUT.value },
+            body,
+        });
+        const data = await res.json();
+
+        // CSRF 토큰은 매 POST마다 재생성되므로 새 값으로 갱신(이후 저장 제출 실패 방지).
+        if (data.csrf_hash) {
+            CSRF_INPUT.value = data.csrf_hash;
+        }
+        if (!res.ok) {
+            setStatus((data.error && data.error.message) || '판독에 실패했습니다.', true);
+            return;
+        }
+
+        applyResult(data);
+    } catch (e) {
+        setStatus('판독 요청 중 오류가 발생했습니다.', true);
+    } finally {
+        scanBtn.disabled = false;
+    }
+});
+
+function applyResult(data) {
+    setStatus('판독 완료 — 내용을 사진과 대조·확인하세요.');
+
+    // 구분 → 계정과목 목록 재구성이 선행돼야 account_id 선택이 유효
+    const typeRadio = document.querySelector(`input[name=entry_type][value=${data.entry_type}]`);
+    if (typeRadio) {
+        typeRadio.checked = true;
+    }
+    renderAccounts();
+
+    if (data.entry_date) {
+        document.getElementById('entry_date').value = data.entry_date;
+    }
+    document.getElementById('description').value = data.description || '';
+    document.getElementById('supply_amount').value = data.supply_amount || '';
+    if (data.evidence_type) {
+        document.getElementById('evidence_type').value = data.evidence_type;
+    }
+    document.getElementById('receipt_path').value = data.receipt_path || '';
+
+    accountSelect.value = data.account_id ? String(data.account_id) : '';
+
+    const partnerSelect = document.getElementById('partner_id');
+    if (data.partner_id) {
+        partnerSelect.value = String(data.partner_id);
+    } else {
+        partnerSelect.value = '';
+        if (data.partner_name) {
+            setStatus(`미등록 거래처: "${data.partner_name}" — 필요 시 직접 등록하세요.`, true);
+        }
+    }
+
+    updateVat();
+}
 </script>
 <?= $this->endSection() ?>
