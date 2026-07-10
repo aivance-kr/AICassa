@@ -25,17 +25,20 @@ final class LedgerImportService
     private BusinessModel $businesses;
     private AccountModel $accounts;
     private PartnerModel $partners;
+    private AccountClassifierService $classifier;
 
     public function __construct(
         ?LedgerService $ledger = null,
         ?BusinessModel $businesses = null,
         ?AccountModel $accounts = null,
         ?PartnerModel $partners = null,
+        ?AccountClassifierService $classifier = null,
     ) {
         $this->ledger     = $ledger ?? service('ledgerService');
         $this->businesses = $businesses ?? model(BusinessModel::class);
         $this->accounts   = $accounts ?? model(AccountModel::class);
         $this->partners   = $partners ?? model(PartnerModel::class);
+        $this->classifier = $classifier ?? service('accountClassifierService');
     }
 
     /**
@@ -80,9 +83,11 @@ final class LedgerImportService
     public function import(int $userId, int $businessId, array $rows): ImportResult
     {
         // 사업장 소유권 1회 검증
-        if ($this->businesses->findOwned($userId, $businessId) === null) {
+        $business = $this->businesses->findOwned($userId, $businessId);
+        if ($business === null) {
             throw new NotFoundException('사업장을 찾을 수 없습니다.');
         }
+        $isManufacturing = (bool) $business['is_manufacturing'];
 
         $imported = 0;
         $skipped  = 0;
@@ -95,7 +100,7 @@ final class LedgerImportService
             $rowNum = $index + 1;
 
             try {
-                $data = $this->buildData($businessId, $raw);
+                $data = $this->buildData($businessId, $raw, $isManufacturing);
                 $this->ledger->create($userId, $businessId, $data);
                 $imported++;
             } catch (RowException $e) {
@@ -117,7 +122,7 @@ final class LedgerImportService
      *
      * @param array<string, string> $raw
      */
-    private function buildData(int $businessId, array $raw): LedgerData
+    private function buildData(int $businessId, array $raw, bool $isManufacturing): LedgerData
     {
         $date = $this->normalizeDate($raw['date']);
         if ($date === null) {
@@ -151,6 +156,14 @@ final class LedgerImportService
                 throw new RowException("거래처 '{$raw['partner']}' 미등록");
             }
             $partnerId = (int) $partner['id'];
+        }
+
+        // 계정과목 칸이 비었으면 자동분류로 draft 를 채운다(이력 우선, 없으면 AI). 확신할 때만.
+        if ($accountId === null && $raw['description'] !== '') {
+            $suggestion = $this->classifier->suggest($businessId, $type, $raw['description'], $raw['partner'], $isManufacturing);
+            if ($suggestion->isConfident()) {
+                $accountId = $suggestion->accountId;
+            }
         }
 
         $evidence = $raw['evidence'] === ''
