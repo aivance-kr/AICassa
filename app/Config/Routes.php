@@ -34,6 +34,7 @@ $routes->group('admin', ['filter' => 'session'], static function ($routes): void
 
         // 장부(사업장 스코프 중첩)
         $routes->get('(:num)/ledger', 'Admin\LedgerController::index/$1');
+        $routes->get('(:num)/ledger/search', 'Admin\LedgerSearchController::search/$1');
         $routes->get('(:num)/ledger/new', 'Admin\LedgerController::new/$1');
         $routes->post('(:num)/ledger', 'Admin\LedgerController::create/$1');
         $routes->post('(:num)/ledger/receipts/recognize', 'Admin\ReceiptOcrController::recognize/$1');

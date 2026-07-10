@@ -27,21 +27,30 @@ class LedgerController extends BaseAdminController
             return redirect()->to('/admin/businesses')->with('error', '사업장을 찾을 수 없습니다.');
         }
 
+        // 화이트리스트 필터만 읽는다(자연어 검색 결과도 이 파라미터로 전달된다).
         $filters = [
             'fiscal_year' => $this->request->getGet('fiscal_year'),
             'entry_type'  => $this->request->getGet('entry_type'),
             'date_from'   => $this->request->getGet('date_from'),
             'date_to'     => $this->request->getGet('date_to'),
+            'account_id'  => $this->request->getGet('account_id'),
+            'partner_id'  => $this->request->getGet('partner_id'),
+            'amount_min'  => $this->request->getGet('amount_min'),
+            'amount_max'  => $this->request->getGet('amount_max'),
+            'keyword'     => $this->request->getGet('keyword'),
         ];
 
-        $entries = service('ledgerService')->listForBusiness($this->authUserId(), $businessId, $filters);
+        $ledger  = service('ledgerService');
+        $entries = $ledger->listForBusiness($this->authUserId(), $businessId, $filters);
 
         return $this->render('admin/ledger/index', [
-            'business' => $business,
-            'entries'  => $entries,
-            'summary'  => service('ledgerService')->summarize($entries),
-            'years'    => service('ledgerService')->availableYears($this->authUserId(), $businessId),
-            'filters'  => $filters,
+            'business'      => $business,
+            'entries'       => $entries,
+            'summary'       => $ledger->summarize($entries),
+            'years'         => $ledger->availableYears($this->authUserId(), $businessId),
+            'filters'       => $filters,
+            'filterSummary' => $ledger->filterSummary($businessId, $filters),
+            'query'         => (string) $this->request->getGet('q'),
         ]);
     }
 

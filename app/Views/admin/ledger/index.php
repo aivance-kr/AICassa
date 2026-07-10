@@ -10,7 +10,31 @@
     <a href="/admin/businesses/<?= $bid ?>/ledger/import" class="btn secondary">CSV 일괄 업로드</a>
 </div>
 
+<form method="get" action="/admin/businesses/<?= $bid ?>/ledger/search" class="nl-search"
+      style="display:flex; gap:8px; align-items:center; margin-bottom:10px;">
+    <input type="text" name="q" value="<?= esc($query ?? '') ?>" style="flex:1;"
+           placeholder="자연어로 검색 — 예: 지난달 접대비 50만원 넘는 건, 올해 스타벅스 거래">
+    <button type="submit" class="btn">AI 검색</button>
+</form>
+
+<?php if (! empty($filterSummary)): ?>
+    <div class="filter-chips muted" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; font-size:13px;">
+        <span>적용된 필터:</span>
+        <?php foreach ($filterSummary as $chip): ?>
+            <span style="background:#eef2ff; color:#3730a3; border-radius:12px; padding:2px 10px;"><?= esc($chip) ?></span>
+        <?php endforeach; ?>
+        <a href="/admin/businesses/<?= $bid ?>/ledger">초기화</a>
+    </div>
+<?php endif; ?>
+
 <form method="get" class="filter" style="display:flex; gap:8px; align-items:end; flex-wrap:wrap; margin-bottom:16px;">
+    <?php // 자연어 검색으로 해석된 계정과목·거래처 필터는 hidden 으로 보존(수동 재조회 대비) ?>
+    <?php if (! empty($filters['account_id'])): ?>
+        <input type="hidden" name="account_id" value="<?= (int) $filters['account_id'] ?>">
+    <?php endif; ?>
+    <?php if (! empty($filters['partner_id'])): ?>
+        <input type="hidden" name="partner_id" value="<?= (int) $filters['partner_id'] ?>">
+    <?php endif; ?>
     <div>
         <label class="muted" style="display:block; font-size:12px;">귀속연도</label>
         <select name="fiscal_year">
@@ -35,6 +59,18 @@
     <div>
         <label class="muted" style="display:block; font-size:12px;">종료일</label>
         <input type="date" name="date_to" value="<?= esc($filters['date_to'] ?? '') ?>">
+    </div>
+    <div>
+        <label class="muted" style="display:block; font-size:12px;">거래내용</label>
+        <input type="text" name="keyword" value="<?= esc($filters['keyword'] ?? '') ?>" placeholder="검색어">
+    </div>
+    <div>
+        <label class="muted" style="display:block; font-size:12px;">최소금액</label>
+        <input type="number" name="amount_min" min="0" style="width:110px;" value="<?= esc($filters['amount_min'] ?? '') ?>">
+    </div>
+    <div>
+        <label class="muted" style="display:block; font-size:12px;">최대금액</label>
+        <input type="number" name="amount_max" min="0" style="width:110px;" value="<?= esc($filters['amount_max'] ?? '') ?>">
     </div>
     <button type="submit" class="btn secondary">조회</button>
 </form>
