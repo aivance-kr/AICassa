@@ -44,17 +44,20 @@ final class ReceiptOcrService
     private AccountModel $accounts;
     private PartnerModel $partners;
     private CURLRequest $http;
+    private AccountClassifierService $classifier;
 
     public function __construct(
         ?BusinessModel $businesses = null,
         ?AccountModel $accounts = null,
         ?PartnerModel $partners = null,
         ?CURLRequest $http = null,
+        ?AccountClassifierService $classifier = null,
     ) {
         $this->businesses = $businesses ?? model(BusinessModel::class);
         $this->accounts   = $accounts ?? model(AccountModel::class);
         $this->partners   = $partners ?? model(PartnerModel::class);
         $this->http       = $http ?? service('curlrequest');
+        $this->classifier = $classifier ?? service('accountClassifierService');
     }
 
     /**
@@ -86,7 +89,7 @@ final class ReceiptOcrService
             $text   = $this->callClaude($base64, $mime, $prompt);
             $result = OcrResult::fromArray($this->parseJson($text));
 
-            return $this->toResponse($businessId, $relativePath, $result);
+            return $this->toResponse($businessId, $relativePath, $result, (bool) $business['is_manufacturing']);
         } catch (Throwable $e) {
             // 판독 실패 시 고아 파일을 즉시 정리한다.
             if (is_file($absolutePath)) {
@@ -209,19 +212,36 @@ final class ReceiptOcrService
     /**
      * 판독 결과를 폼 자동채움용 배열로 변환한다.
      * 계정과목·거래처는 기존 등록건과 정확일치할 때만 id 를 채우고, 실패 시 이름(hint)만 남긴다.
+     * 계정과목 정확일치에 실패하면 자동분류기(이력·AI)로 폴백해 draft 를 채운다.
      *
      * @return array<string, mixed>
      */
-    private function toResponse(int $businessId, string $receiptPath, OcrResult $result): array
+    private function toResponse(int $businessId, string $receiptPath, OcrResult $result, bool $isManufacturing): array
     {
         $category = $result->entryType === EntryType::Income
             ? AccountCategory::Income
             : AccountCategory::Expense;
 
-        $accountId = null;
+        $accountId   = null;
+        $accountName = $result->accountName;
         if ($result->accountName !== null) {
             $account   = $this->accounts->findByCategoryName($category, $result->accountName);
             $accountId = $account !== null ? (int) $account['id'] : null;
+        }
+
+        // 정확일치에 실패했으면 자동분류기로 폴백(이력 우선, 없으면 AI). 확신할 때만 채운다.
+        if ($accountId === null && $result->description !== '') {
+            $suggestion = $this->classifier->suggest(
+                $businessId,
+                $result->entryType,
+                $result->description,
+                $result->partnerName,
+                $isManufacturing,
+            );
+            if ($suggestion->isConfident()) {
+                $accountId   = $suggestion->accountId;
+                $accountName = $suggestion->accountName;
+            }
         }
 
         $partnerId = null;
@@ -238,7 +258,7 @@ final class ReceiptOcrService
             'supply_amount' => $result->supplyAmount,
             'evidence_type' => $result->evidenceType?->value,
             'account_id'    => $accountId,
-            'account_name'  => $result->accountName,
+            'account_name'  => $accountName,
             'partner_id'    => $partnerId,
             'partner_name'  => $result->partnerName,
         ];

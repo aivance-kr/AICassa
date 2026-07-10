@@ -5,6 +5,7 @@ use App\Exceptions\NotFoundException;
 use App\Exceptions\OcrProcessingException;
 use App\Models\BusinessModel;
 use App\Models\PartnerModel;
+use App\Services\AccountClassifierService;
 use App\Services\ReceiptOcrService;
 use CodeIgniter\HTTP\CURLRequest;
 use CodeIgniter\HTTP\Files\UploadedFile;
@@ -66,15 +67,18 @@ final class ReceiptOcrServiceTest extends CIUnitTestCase
             'name'        => '오피스마트',
         ]);
 
-        $service = new ReceiptOcrService(http: $this->stubClient([
-            'entry_type'    => 'expense',
-            'entry_date'    => '2026-03-15',
-            'description'   => '사무용품',
-            'supply_amount' => 45000,
-            'evidence_type' => 'tax_invoice',
-            'account_name'  => '소모품비',
-            'partner_name'  => '오피스마트',
-        ]));
+        $service = new ReceiptOcrService(
+            http: $this->stubClient([
+                'entry_type'    => 'expense',
+                'entry_date'    => '2026-03-15',
+                'description'   => '사무용품',
+                'supply_amount' => 45000,
+                'evidence_type' => 'tax_invoice',
+                'account_name'  => '소모품비',
+                'partner_name'  => '오피스마트',
+            ]),
+            classifier: new AccountClassifierService(), // AI 폴백 비활성(네트워크 차단)
+        );
 
         $result = $service->recognize($this->userId, $this->businessId, $this->fakeFile());
 
@@ -91,15 +95,18 @@ final class ReceiptOcrServiceTest extends CIUnitTestCase
      */
     public function testRecognizeLeavesUnknownPartnerUnmatched(): void
     {
-        $service = new ReceiptOcrService(http: $this->stubClient([
-            'entry_type'    => 'expense',
-            'entry_date'    => '2026-03-15',
-            'description'   => '점심',
-            'supply_amount' => 12000,
-            'evidence_type' => 'cash_receipt',
-            'account_name'  => null,
-            'partner_name'  => '없는식당',
-        ]));
+        $service = new ReceiptOcrService(
+            http: $this->stubClient([
+                'entry_type'    => 'expense',
+                'entry_date'    => '2026-03-15',
+                'description'   => '점심',
+                'supply_amount' => 12000,
+                'evidence_type' => 'cash_receipt',
+                'account_name'  => null,
+                'partner_name'  => '없는식당',
+            ]),
+            classifier: new AccountClassifierService(), // AI 폴백 비활성(네트워크 차단)
+        );
 
         $result = $service->recognize($this->userId, $this->businessId, $this->fakeFile());
 

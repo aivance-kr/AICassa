@@ -2,7 +2,9 @@
 
 namespace Config;
 
+use App\Libraries\AnthropicClient;
 use App\Models\TaxParameterModel;
+use App\Services\AccountClassifierService;
 use App\Services\AssetService;
 use App\Services\BusinessService;
 use App\Services\DepreciationService;
@@ -128,6 +130,19 @@ class Services extends BaseService
         }
 
         return new LedgerImportService();
+    }
+
+    /**
+     * 계정과목 자동분류 서비스(이력 캐시 + AI 폴백).
+     */
+    public static function accountClassifierService(bool $getShared = true): AccountClassifierService
+    {
+        if ($getShared) {
+            return static::getSharedInstance('accountClassifierService');
+        }
+
+        // AI 폴백 클라이언트는 env 기반으로 주입(키 없으면 null → 이력 기반만 동작).
+        return new AccountClassifierService(ai: AnthropicClient::fromEnv());
     }
 
     /**

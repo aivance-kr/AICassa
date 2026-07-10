@@ -78,6 +78,76 @@ class LedgerEntryModel extends Model
     }
 
     /**
+     * 과거 거래에서 계정과목 사용 빈도를 집계한다(자동분류 이력 근거).
+     * account_id 가 채워진 확정 거래만 대상으로 하며, 조건이 좁을수록 신뢰도가 높다.
+     *
+     * @param string      $entryType   income|expense
+     * @param string|null $description 정확일치 거래내용(주면 해당 내용과 동일한 건만)
+     * @param int|null    $partnerId   거래처(주면 해당 거래처 건만)
+     *
+     * @return array<int, int> account_id => 건수 (내림차순)
+     */
+    public function accountUsage(int $businessId, string $entryType, ?string $description = null, ?int $partnerId = null): array
+    {
+        $builder = $this->builder()
+            ->select('account_id, COUNT(*) AS cnt')
+            ->where('business_id', $businessId)
+            ->where('entry_type', $entryType)
+            ->where('account_id IS NOT NULL')
+            ->where('deleted_at', null);
+
+        if ($description !== null && $description !== '') {
+            $builder->where('description', $description);
+        }
+        if ($partnerId !== null) {
+            $builder->where('partner_id', $partnerId);
+        }
+
+        $rows = $builder->groupBy('account_id')
+            ->orderBy('cnt', 'DESC')
+            ->orderBy('account_id', 'ASC')
+            ->get()
+            ->getResultArray();
+
+        $usage = [];
+
+        foreach ($rows as $row) {
+            $usage[(int) $row['account_id']] = (int) $row['cnt'];
+        }
+
+        return $usage;
+    }
+
+    /**
+     * AI 폴백 few-shot 용 최근 분류 표본(거래내용 → 계정과목 id).
+     * account_id 가 채워진 최신 거래부터 반환한다.
+     *
+     * @return list<array{description: string, account_id: int}>
+     */
+    public function recentClassified(int $businessId, string $entryType, int $limit): array
+    {
+        $rows = $this->builder()
+            ->select('description, account_id')
+            ->where('business_id', $businessId)
+            ->where('entry_type', $entryType)
+            ->where('account_id IS NOT NULL')
+            ->where("description != ''")
+            ->where('deleted_at', null)
+            ->orderBy('id', 'DESC')
+            ->limit($limit)
+            ->get()
+            ->getResultArray();
+
+        return array_map(
+            static fn (array $r): array => [
+                'description' => (string) $r['description'],
+                'account_id'  => (int) $r['account_id'],
+            ],
+            $rows,
+        );
+    }
+
+    /**
      * 사업장에 장부가 기록된 귀속연도 목록(내림차순).
      *
      * @return list<int>

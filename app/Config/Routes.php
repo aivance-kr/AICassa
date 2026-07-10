@@ -37,6 +37,7 @@ $routes->group('admin', ['filter' => 'session'], static function ($routes): void
         $routes->get('(:num)/ledger/new', 'Admin\LedgerController::new/$1');
         $routes->post('(:num)/ledger', 'Admin\LedgerController::create/$1');
         $routes->post('(:num)/ledger/receipts/recognize', 'Admin\ReceiptOcrController::recognize/$1');
+        $routes->post('(:num)/ledger/classify-account', 'Admin\AccountClassifierController::suggest/$1');
         $routes->get('(:num)/ledger/import', 'Admin\LedgerController::importForm/$1');
         $routes->post('(:num)/ledger/import', 'Admin\LedgerController::import/$1');
         $routes->get('(:num)/ledger/(:num)/edit', 'Admin\LedgerController::edit/$1/$2');

@@ -44,6 +44,7 @@
 
     <label for="account_id">계정과목</label>
     <select id="account_id" name="account_id"><!-- JS로 채움 --></select>
+    <small id="accountSuggest" class="muted" style="display:block; margin-top:4px;"></small>
 
     <label for="description">거래내용 <span style="color:#dc2626">*</span></label>
     <input type="text" id="description" name="description" value="<?= esc($val('description')) ?>" required>
@@ -191,5 +192,55 @@ function applyResult(data) {
 
     updateVat();
 }
+
+// ── 거래내용 → 계정과목 자동추천(수기 입력) ──────────────────────────
+const CLASSIFY_URL = '/admin/businesses/<?= (int) $bid ?>/ledger/classify-account';
+const descInput = document.getElementById('description');
+const partnerSelect = document.getElementById('partner_id');
+const suggestHint = document.getElementById('accountSuggest');
+const SOURCE_LABEL = { history: '과거 이력', ai: 'AI 추천' };
+
+function partnerName() {
+    const opt = partnerSelect.options[partnerSelect.selectedIndex];
+    return opt && opt.value ? opt.text : '';
+}
+
+// 거래내용 입력을 마치면(포커스 아웃) 계정과목이 비어 있을 때만 자동추천한다.
+descInput.addEventListener('blur', async () => {
+    const description = descInput.value.trim();
+    if (!description || accountSelect.value) {
+        return; // 내용이 없거나 이미 계정과목을 골랐으면 건드리지 않는다.
+    }
+
+    const body = new FormData();
+    body.append('entry_type', document.querySelector('input[name=entry_type]:checked').value);
+    body.append('description', description);
+    body.append('partner_name', partnerName());
+
+    suggestHint.textContent = '계정과목 추천 중…';
+    try {
+        const res = await fetch(CLASSIFY_URL, {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': CSRF_INPUT.value },
+            body,
+        });
+        const data = await res.json();
+        if (data.csrf_hash) {
+            CSRF_INPUT.value = data.csrf_hash; // 매 POST마다 재생성되는 토큰 갱신
+        }
+        if (!res.ok || !data.account_id) {
+            suggestHint.textContent = '';
+            return;
+        }
+        // 사용자가 그 사이 직접 골랐다면 덮어쓰지 않는다.
+        if (!accountSelect.value) {
+            accountSelect.value = String(data.account_id);
+        }
+        const label = SOURCE_LABEL[data.source] || '추천';
+        suggestHint.textContent = `${label}: "${data.account_name}" (확인 후 저장하세요)`;
+    } catch (e) {
+        suggestHint.textContent = '';
+    }
+});
 </script>
 <?= $this->endSection() ?>
