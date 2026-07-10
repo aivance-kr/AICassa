@@ -288,4 +288,56 @@ final class LedgerService
             throw new NotFoundException('사업장을 찾을 수 없습니다.');
         }
     }
+
+    /**
+     * 적용된 필터를 사람이 읽을 수 있는 요약(칩)으로 변환한다(자연어 검색 해석 결과 노출용).
+     *
+     * @param array<string, mixed> $filters
+     *
+     * @return list<string>
+     */
+    public function filterSummary(int $businessId, array $filters): array
+    {
+        $chips = [];
+
+        if (! empty($filters['entry_type'])) {
+            $type = EntryType::tryFrom((string) $filters['entry_type']);
+            if ($type !== null) {
+                $chips[] = '구분: ' . $type->label();
+            }
+        }
+        if (! empty($filters['account_id'])) {
+            /** @var array<string, mixed>|null $account */
+            $account = $this->accounts->find((int) $filters['account_id']);
+            if ($account !== null) {
+                $chips[] = '계정과목: ' . (string) $account['name'];
+            }
+        }
+        if (! empty($filters['partner_id'])) {
+            $name = $this->partnerNameMap($businessId)[(int) $filters['partner_id']] ?? null;
+            if ($name !== null) {
+                $chips[] = '거래처: ' . $name;
+            }
+        }
+        if (! empty($filters['fiscal_year'])) {
+            $chips[] = '귀속연도: ' . (int) $filters['fiscal_year'];
+        }
+        if (! empty($filters['date_from'])) {
+            $chips[] = '시작일: ' . (string) $filters['date_from'];
+        }
+        if (! empty($filters['date_to'])) {
+            $chips[] = '종료일: ' . (string) $filters['date_to'];
+        }
+        if (isset($filters['amount_min']) && $filters['amount_min'] !== '') {
+            $chips[] = '최소금액: ' . number_format((int) $filters['amount_min']) . '원';
+        }
+        if (isset($filters['amount_max']) && $filters['amount_max'] !== '') {
+            $chips[] = '최대금액: ' . number_format((int) $filters['amount_max']) . '원';
+        }
+        if (! empty($filters['keyword'])) {
+            $chips[] = '검색어: ' . (string) $filters['keyword'];
+        }
+
+        return $chips;
+    }
 }

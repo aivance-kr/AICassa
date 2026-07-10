@@ -9,6 +9,7 @@ use App\Services\AssetService;
 use App\Services\BusinessService;
 use App\Services\DepreciationService;
 use App\Services\LedgerImportService;
+use App\Services\LedgerQueryParserService;
 use App\Services\LedgerService;
 use App\Services\PartnerService;
 use App\Services\ReceiptOcrService;
@@ -143,6 +144,19 @@ class Services extends BaseService
 
         // AI 폴백 클라이언트는 env 기반으로 주입(키 없으면 null → 이력 기반만 동작).
         return new AccountClassifierService(ai: AnthropicClient::fromEnv());
+    }
+
+    /**
+     * 자연어 장부 검색 파서 서비스(NL → 안전한 필터 DTO).
+     */
+    public static function ledgerQueryParserService(bool $getShared = true): LedgerQueryParserService
+    {
+        if ($getShared) {
+            return static::getSharedInstance('ledgerQueryParserService');
+        }
+
+        // AI 클라이언트는 env 기반 주입(키 없으면 null → 키워드 검색으로 폴백).
+        return new LedgerQueryParserService(ai: AnthropicClient::fromEnv());
     }
 
     /**

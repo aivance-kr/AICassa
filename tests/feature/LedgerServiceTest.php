@@ -175,4 +175,45 @@ final class LedgerServiceTest extends CIUnitTestCase
         $incomeRow = array_values(array_filter($entries, static fn ($e) => $e['entry_type'] === 'income'))[0];
         $this->assertSame('매출', $incomeRow['account_name']);
     }
+
+    /**
+     * 자연어 검색용 확장 필터(금액 범위·거래내용 키워드·계정과목)가 실제로 적용된다.
+     */
+    public function testAdvancedFilters(): void
+    {
+        $sales = $this->salesAccountId();
+        $this->service->create($this->userId, $this->businessId, new LedgerData(
+            entryDate: '2024-03-01',
+            entryType: EntryType::Income,
+            description: '스타벅스 상품권 판매',
+            supplyAmount: 300_000,
+            accountId: $sales,
+            evidenceType: EvidenceType::TaxInvoice,
+        ));
+        $this->service->create($this->userId, $this->businessId, new LedgerData(
+            entryDate: '2024-04-01',
+            entryType: EntryType::Income,
+            description: '대형 납품',
+            supplyAmount: 3_000_000,
+            accountId: $sales,
+            evidenceType: EvidenceType::TaxInvoice,
+        ));
+
+        // 금액 하한: 100만원 이상 → 대형 납품 1건
+        $byAmount = $this->service->listForBusiness($this->userId, $this->businessId, ['amount_min' => 1_000_000]);
+        $this->assertCount(1, $byAmount);
+        $this->assertSame('대형 납품', $byAmount[0]['description']);
+
+        // 거래내용 키워드: '스타벅스' → 1건
+        $byKeyword = $this->service->listForBusiness($this->userId, $this->businessId, ['keyword' => '스타벅스']);
+        $this->assertCount(1, $byKeyword);
+
+        // 계정과목 필터 + 금액 상한 조합
+        $byAccount = $this->service->listForBusiness($this->userId, $this->businessId, [
+            'account_id' => $sales,
+            'amount_max' => 1_000_000,
+        ]);
+        $this->assertCount(1, $byAccount);
+        $this->assertSame('스타벅스 상품권 판매', $byAccount[0]['description']);
+    }
 }

@@ -49,8 +49,10 @@ class LedgerEntryModel extends Model
 
     /**
      * 필터 조건으로 장부를 조회한다.
+     * 허용 키(화이트리스트)만 해석하며, 값은 모두 Query Builder 바인딩으로 전달한다(인젝션 차단).
      *
-     * @param array<string, mixed> $filters fiscal_year, entry_type, date_from, date_to, partner_id
+     * @param array<string, mixed> $filters fiscal_year, entry_type, date_from, date_to,
+     *                                      account_id, partner_id, amount_min, amount_max, keyword
      *
      * @return list<array<string, mixed>>
      */
@@ -70,8 +72,21 @@ class LedgerEntryModel extends Model
         if (! empty($filters['date_to'])) {
             $builder->where('entry_date <=', (string) $filters['date_to']);
         }
+        if (! empty($filters['account_id'])) {
+            $builder->where('account_id', (int) $filters['account_id']);
+        }
         if (! empty($filters['partner_id'])) {
             $builder->where('partner_id', (int) $filters['partner_id']);
+        }
+        if (isset($filters['amount_min']) && $filters['amount_min'] !== '') {
+            $builder->where('supply_amount >=', (int) $filters['amount_min']);
+        }
+        if (isset($filters['amount_max']) && $filters['amount_max'] !== '') {
+            $builder->where('supply_amount <=', (int) $filters['amount_max']);
+        }
+        if (! empty($filters['keyword'])) {
+            // like() 는 값을 이스케이프·바인딩한다(부분검색, 인젝션 안전).
+            $builder->like('description', (string) $filters['keyword']);
         }
 
         return $builder->orderBy('entry_date', 'ASC')->orderBy('id', 'ASC')->findAll();
