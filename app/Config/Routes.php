@@ -63,3 +63,18 @@ $routes->group('admin', ['filter' => 'session'], static function ($routes): void
         $routes->post('(:num)/assets/(:num)/depreciation', 'Admin\AssetController::postDepreciation/$1/$2');
     });
 });
+
+// Operator (.env 자격증명 인증) — 연도별 세법 파라미터 관리. 사업장 Admin 과 완전 분리.
+$routes->get('operator/login', 'Operator\AuthController::showLogin');
+$routes->post('operator/login', 'Operator\AuthController::login');
+$routes->get('operator/logout', 'Operator\AuthController::logout');
+$routes->group('operator', ['filter' => 'operator'], static function ($routes): void {
+    $routes->get('', 'Operator\TaxParameterController::index');
+    $routes->group('tax-parameters', static function ($routes): void {
+        $routes->get('', 'Operator\TaxParameterController::index');
+        $routes->post('years', 'Operator\TaxParameterController::createYear');
+        $routes->get('(:num)', 'Operator\TaxParameterController::show/$1');
+        $routes->get('(:num)/edit', 'Operator\TaxParameterController::edit/$1');
+        $routes->post('(:num)', 'Operator\TaxParameterController::update/$1');
+    });
+});

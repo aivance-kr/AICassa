@@ -2,6 +2,7 @@
 
 namespace Config;
 
+use App\Models\TaxParameterModel;
 use App\Services\AssetService;
 use App\Services\BusinessService;
 use App\Services\DepreciationService;
@@ -12,6 +13,7 @@ use App\Services\ReceiptOcrService;
 use App\Services\SummaryService;
 use App\Services\TaxFormExporter;
 use App\Services\TaxFormService;
+use App\Services\TaxParameterService;
 use App\Services\TaxRuleResolver;
 use App\Services\VatCalculatorService;
 use CodeIgniter\Config\BaseService;
@@ -57,6 +59,7 @@ class Services extends BaseService
 
     /**
      * 시행연도 기준 세법 룰셋 해석 서비스.
+     * 룰셋 소스는 운영자 관리 DB(tax_parameters) 우선, 비어 있으면 Config\TaxRules.
      */
     public static function taxRuleResolver(bool $getShared = true): TaxRuleResolver
     {
@@ -64,7 +67,19 @@ class Services extends BaseService
             return static::getSharedInstance('taxRuleResolver');
         }
 
-        return new TaxRuleResolver();
+        return new TaxRuleResolver(null, model(TaxParameterModel::class));
+    }
+
+    /**
+     * 연도별 세법 파라미터 운영자 관리 서비스.
+     */
+    public static function taxParameterService(bool $getShared = true): TaxParameterService
+    {
+        if ($getShared) {
+            return static::getSharedInstance('taxParameterService');
+        }
+
+        return new TaxParameterService();
     }
 
     /**

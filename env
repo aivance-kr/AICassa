@@ -74,3 +74,10 @@
 
 # ANTHROPIC_API_KEY = your-anthropic-api-key
 # ANTHROPIC_MODEL = claude-sonnet-5
+# OPERATOR (세법 파라미터 관리 운영자 로그인 — 사업장 Admin 과 별도)
+#--------------------------------------------------------------------
+# 아이디와 비밀번호를 지정한다. 비밀번호는 평문 또는 password_hash() 해시 모두 허용.
+# (해시로 시작하면 '$2y$' 등 bcrypt 형식이면 password_verify 로 검증)
+
+# operator.id = admin
+# operator.password = change-this-strong-password
