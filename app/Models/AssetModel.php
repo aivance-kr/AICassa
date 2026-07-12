@@ -58,4 +58,18 @@ class AssetModel extends Model
             ->where('id', $assetId)
             ->first();
     }
+
+    /**
+     * 사업장 내 동일 자산명으로 가장 최근 등록된 자산(자동제안 이력 근거용). 없으면 null.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function findLatestByName(int $businessId, string $name): ?array
+    {
+        return $this->where('business_id', $businessId)
+            ->where('name', trim($name))
+            ->orderBy('acquired_at', 'DESC')
+            ->orderBy('id', 'DESC')
+            ->first();
+    }
 }
