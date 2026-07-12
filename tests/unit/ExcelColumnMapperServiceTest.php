@@ -38,11 +38,13 @@ final class ExcelColumnMapperServiceTest extends CIUnitTestCase
      */
     public function testNormalizationMatch(): void
     {
+        // 공백·괄호를 제거한 뒤 동의어와 정확일치하면 매핑된다.
         $service = new ExcelColumnMapperService();
-        $assign  = $service->suggest(['거 래 일', '금액(원)']);
+        $assign  = $service->suggest(['거 래 일', '공급 가액', '(계정과목)']);
 
         $this->assertSame('date', $assign[0]);
         $this->assertSame('amount', $assign[1]);
+        $this->assertSame('account', $assign[2]);
     }
 
     /**
