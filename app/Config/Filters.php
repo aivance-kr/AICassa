@@ -2,6 +2,7 @@
 
 namespace Config;
 
+use App\Filters\AiRateLimitFilter;
 use App\Filters\OperatorAuthFilter;
 use CodeIgniter\Config\Filters as BaseFilters;
 use CodeIgniter\Filters\Cors;
@@ -36,6 +37,7 @@ class Filters extends BaseFilters
         'pagecache'     => PageCache::class,
         'performance'   => PerformanceMetrics::class,
         'operator'      => OperatorAuthFilter::class,
+        'aiRateLimit'   => AiRateLimitFilter::class,
     ];
 
     /**
