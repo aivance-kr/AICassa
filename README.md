@@ -60,6 +60,37 @@
 
 ---
 
+## AI 업무효율화 기능 (Epic #20)
+
+Anthropic Claude 연동 인프라(`app/Libraries/AnthropicClient.php` · `env('ANTHROPIC_API_KEY')` · 기본 모델 `claude-sonnet-5`)를 재활용해
+간편장부 작성·결산·신고의 반복노동과 세무 리스크를 AI로 줄인다. 6개 기능 모두 아래 **공통 설계 원칙**을 따른다.
+
+### 공통 설계 원칙
+
+- **계산은 AI 금지** — 부가세·상각액 등 수치는 항상 도메인 서비스가 재계산한다(단일 진실 소스).
+- **정확일치·이력 우선** — AI 호출 전에 캐시·이력·규칙을 먼저 적용하고, miss일 때만 LLM을 호출한다(토큰 비용·5초 타임아웃).
+- **닫힌 어휘 JSON** — AI 출력은 실제 참조데이터와 **정확일치할 때만** 채택하고(화이트리스트), 나머지는 폐기한다.
+- **초안(draft)** — AI 결과는 제안일 뿐이며, 최종 확정은 사람이 한다.
+- **graceful 폴백** — `ANTHROPIC_API_KEY` 미설정·AI 실패 시 비-AI 경로(이력·규칙·검색)로 자동 폴백해 기능이 멈추지 않는다.
+
+### 기능 목록
+
+| # | 기능 | 요약 | 핵심 서비스 |
+|---|---|---|---|
+| ① | 계정과목 AI 자동분류 | 거래내용 → 계정과목 추천, 이력 우선·AI 폴백 | `AccountClassifierService` |
+| ② | 자연어 장부 검색 | "지난달 접대비 50만원 넘는 건" → 안전한 필터 DTO (AI는 SQL 미생성, 화이트리스트 흡수) | `LedgerQueryParserService` |
+| ③ | 결산·신고 전 이상탐지 | 결정적 규칙 + 선택적 AI 오분류 점검 리포트 | `AnomalyDetectionService` |
+| ④ | 감가상각/자산 판단 어시스트 | 품목명 → 자산분류·상각방법 제안, 내용연수·소액자산은 결정적 산출 | `AssetAdvisorService` |
+| ⑤ | 세무 Q&A 챗봇 (RAG) | `docs/*.md` 근거 렉시컬 RAG — 인덱싱+검색+인용 응답, 근거 없으면 "확인 불가" | `TaxQaService` |
+| ⑥ | 엑셀 임포트 컬럼 자동매핑 | 고객사별 엑셀/CSV 헤더 → 장부 표준 스키마 AI 매핑 + 확인 UI | `ExcelColumnMapperService` · `SpreadsheetReader` |
+
+### 설정
+
+`.env`에 `ANTHROPIC_API_KEY`(및 선택 `ANTHROPIC_MODEL`, 기본 `claude-sonnet-5`)를 설정하면 AI 경로가 활성화된다.
+미설정 시에도 각 기능은 비-AI 경로로 동작하므로, AI 키 없이 개발·테스트가 가능하다.
+
+---
+
 ## What is CodeIgniter?
 
 CodeIgniter is a PHP full-stack web framework that is light, fast, flexible and secure.
