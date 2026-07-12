@@ -76,6 +76,38 @@ final class LedgerImportService
     }
 
     /**
+     * 명시적 컬럼 매핑으로 데이터 행을 표준 행 배열로 변환한다(자동매핑 확인 UI 경로).
+     * 헤더는 이미 제거된 데이터 행만 받으며, 매핑에 없는 표준 필드는 빈 문자열로 채운다.
+     *
+     * @param list<list<string>>    $dataRows 헤더를 제외한 셀 배열들
+     * @param array<string, int>    $mapping  표준 필드 키 → 소스 컬럼 index
+     *
+     * @return list<array<string, string>>
+     */
+    public function parseWithMapping(array $dataRows, array $mapping): array
+    {
+        // 표준 필드 키는 ExcelColumnMapperService 를 단일 출처로 삼는다(드리프트 방지).
+        $fields = array_keys(ExcelColumnMapperService::fields());
+
+        $rows = [];
+        foreach ($dataRows as $cells) {
+            $row = [];
+            foreach ($fields as $field) {
+                $idx        = $mapping[$field] ?? null;
+                $row[$field] = $idx === null ? '' : trim((string) ($cells[$idx] ?? ''));
+            }
+
+            // 매핑된 값이 모두 비면(빈 행) 건너뛴다.
+            if (implode('', $row) === '') {
+                continue;
+            }
+            $rows[] = $row;
+        }
+
+        return $rows;
+    }
+
+    /**
      * 파싱된 행을 일괄 등록한다. 유효하지 않은 행은 건너뛰고 사유를 집계한다.
      *
      * @param list<array<string, string>> $rows
