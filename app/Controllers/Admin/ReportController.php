@@ -71,6 +71,31 @@ class ReportController extends BaseAdminController
     }
 
     /**
+     * 신고 전 AI 이상탐지 리포트(JSON). 결정적 규칙 + 선택적 AI 오분류 점검.
+     * POST /admin/businesses/{businessId}/reports/anomalies
+     */
+    public function anomalies(int $businessId): ResponseInterface
+    {
+        // CSRF 재생성 대응(다른 AJAX 엔드포인트와 동일).
+        $csrf = ['csrf_name' => csrf_token(), 'csrf_hash' => csrf_hash()];
+
+        $year = (int) $this->request->getPost('fiscal_year');
+        if ($year <= 0) {
+            $year = (int) date('Y');
+        }
+
+        try {
+            $report = service('anomalyDetectionService')->analyze($this->authUserId(), $businessId, $year);
+        } catch (NotFoundException) {
+            return $this->response->setStatusCode(404)->setJSON($csrf + [
+                'error' => ['code' => 'NOT_FOUND', 'message' => '사업장을 찾을 수 없습니다.'],
+            ]);
+        }
+
+        return $this->response->setJSON($report->toArray() + $csrf);
+    }
+
+    /**
      * 세무조정(⑫⑬⑯⑰⑳㉑) 저장.
      */
     public function saveAdjustments(int $businessId): RedirectResponse
