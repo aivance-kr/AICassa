@@ -16,7 +16,7 @@ $routes->group('admin', ['filter' => 'session'], static function ($routes): void
 
     // 세무 Q&A 챗봇(전역 · docs 근거 RAG)
     $routes->get('tax-qa', 'Admin\TaxQaController::index');
-    $routes->post('tax-qa/ask', 'Admin\TaxQaController::ask');
+    $routes->post('tax-qa/ask', 'Admin\TaxQaController::ask', ['filter' => 'aiRateLimit']);
     $routes->get('tax-qa/source', 'Admin\TaxQaController::source');
 
     $routes->group('businesses', static function ($routes): void {
@@ -39,11 +39,11 @@ $routes->group('admin', ['filter' => 'session'], static function ($routes): void
 
         // 장부(사업장 스코프 중첩)
         $routes->get('(:num)/ledger', 'Admin\LedgerController::index/$1');
-        $routes->get('(:num)/ledger/search', 'Admin\LedgerSearchController::search/$1');
+        $routes->get('(:num)/ledger/search', 'Admin\LedgerSearchController::search/$1', ['filter' => 'aiRateLimit']);
         $routes->get('(:num)/ledger/new', 'Admin\LedgerController::new/$1');
         $routes->post('(:num)/ledger', 'Admin\LedgerController::create/$1');
-        $routes->post('(:num)/ledger/receipts/recognize', 'Admin\ReceiptOcrController::recognize/$1');
-        $routes->post('(:num)/ledger/classify-account', 'Admin\AccountClassifierController::suggest/$1');
+        $routes->post('(:num)/ledger/receipts/recognize', 'Admin\ReceiptOcrController::recognize/$1', ['filter' => 'aiRateLimit']);
+        $routes->post('(:num)/ledger/classify-account', 'Admin\AccountClassifierController::suggest/$1', ['filter' => 'aiRateLimit']);
         $routes->get('(:num)/ledger/import', 'Admin\LedgerController::importForm/$1');
         $routes->post('(:num)/ledger/import', 'Admin\LedgerController::import/$1');
         $routes->post('(:num)/ledger/import/confirm', 'Admin\LedgerController::importConfirm/$1');
@@ -59,12 +59,12 @@ $routes->group('admin', ['filter' => 'session'], static function ($routes): void
         $routes->post('(:num)/reports/tax-forms/adjustments', 'Admin\ReportController::saveAdjustments/$1');
         $routes->get('(:num)/reports/tax-forms/print', 'Admin\ReportController::taxFormsPrint/$1');
         $routes->get('(:num)/reports/tax-forms/excel', 'Admin\ReportController::taxFormsExcel/$1');
-        $routes->post('(:num)/reports/anomalies', 'Admin\ReportController::anomalies/$1');
+        $routes->post('(:num)/reports/anomalies', 'Admin\ReportController::anomalies/$1', ['filter' => 'aiRateLimit']);
 
         // 자산대장 · 감가상각
         $routes->get('(:num)/assets', 'Admin\AssetController::index/$1');
         $routes->get('(:num)/assets/new', 'Admin\AssetController::new/$1');
-        $routes->post('(:num)/assets/advise', 'Admin\AssetAdvisorController::suggest/$1');
+        $routes->post('(:num)/assets/advise', 'Admin\AssetAdvisorController::suggest/$1', ['filter' => 'aiRateLimit']);
         $routes->post('(:num)/assets', 'Admin\AssetController::create/$1');
         $routes->get('(:num)/assets/(:num)/edit', 'Admin\AssetController::edit/$1/$2');
         $routes->post('(:num)/assets/(:num)', 'Admin\AssetController::update/$1/$2');
