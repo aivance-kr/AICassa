@@ -105,7 +105,7 @@ final class ExcelColumnMapperService
     {
         return [
             'headers' => array_map('strval', $grid[0] ?? []),
-            'samples' => array_values(array_slice($grid, 1, self::SAMPLE_ROWS)),
+            'samples' => array_slice($grid, 1, self::SAMPLE_ROWS),
         ];
     }
 
