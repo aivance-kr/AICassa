@@ -27,6 +27,12 @@
 ---
 
 ## 로컬 환경 설정
+
+> **⚠️ Windows 환경이면 개발·테스트를 WSL 에서 수행한다.**
+> Windows 체크아웃(`E:\claude_works\AICassa`)에는 **PHP·Composer 가 없다** — 서버 구동·마이그레이션·`composer check`·PHPUnit 을 실행할 수 없다.
+> 코드 편집은 Windows/WSL 어디서든 가능하나 **실행·테스트·정적분석은 반드시 WSL 클론**(`~/claude-works/AICassa`, Ubuntu-24.04)에서 한다.
+> 상세 절차·클론 동기화는 아래 [커맨드 › 로컬 검증은 WSL 클론에서 실행](#로컬-검증은-wsl-클론에서-실행-ci-왕복-예방) 참조.
+
 ```bash
 cp env .env          # env 파일을 .env로 복사 후 아래 필수 키 설정
 composer install
