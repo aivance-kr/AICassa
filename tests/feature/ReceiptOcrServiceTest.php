@@ -3,6 +3,7 @@
 use App\Database\Seeds\AccountSeeder;
 use App\Exceptions\NotFoundException;
 use App\Exceptions\OcrProcessingException;
+use App\Libraries\AnthropicClient;
 use App\Models\BusinessModel;
 use App\Models\PartnerModel;
 use App\Services\AccountClassifierService;
@@ -35,12 +36,7 @@ final class ReceiptOcrServiceTest extends CIUnitTestCase
     {
         parent::setUp();
 
-        // env('ANTHROPIC_API_KEY') 가 채워져 있어야 호출 경로까지 진행된다.
-        // (.env 의 빈 값이 $_ENV 를 선점하므로 세 곳 모두 덮어쓴다)
-        putenv('ANTHROPIC_API_KEY=test-key');
-        $_ENV['ANTHROPIC_API_KEY']    = 'test-key';
-        $_SERVER['ANTHROPIC_API_KEY'] = 'test-key';
-
+        // 호출 경로는 주입된 AnthropicClient 스텁으로 검증하므로 env 키는 필요 없다.
         $users = new UserModel();
         $users->save(new User(['username' => 'ocr1', 'email' => 'ocr@test.com', 'password' => 'secret12345']));
         $this->userId = (int) $users->getInsertID();
@@ -68,7 +64,7 @@ final class ReceiptOcrServiceTest extends CIUnitTestCase
         ]);
 
         $service = new ReceiptOcrService(
-            http: $this->stubClient([
+            ai: $this->stubAi([
                 'entry_type'    => 'expense',
                 'entry_date'    => '2026-03-15',
                 'description'   => '사무용품',
@@ -96,7 +92,7 @@ final class ReceiptOcrServiceTest extends CIUnitTestCase
     public function testRecognizeLeavesUnknownPartnerUnmatched(): void
     {
         $service = new ReceiptOcrService(
-            http: $this->stubClient([
+            ai: $this->stubAi([
                 'entry_type'    => 'expense',
                 'entry_date'    => '2026-03-15',
                 'description'   => '점심',
@@ -123,7 +119,7 @@ final class ReceiptOcrServiceTest extends CIUnitTestCase
         $other = new UserModel();
         $other->save(new User(['username' => 'ocr2', 'email' => 'ocr2@test.com', 'password' => 'secret12345']));
 
-        $service = new ReceiptOcrService(http: $this->stubClient([]));
+        $service = new ReceiptOcrService(ai: $this->stubAi([]));
 
         $this->expectException(NotFoundException::class);
         $service->recognize((int) $other->getInsertID(), $this->businessId, $this->fakeFile());
@@ -134,7 +130,7 @@ final class ReceiptOcrServiceTest extends CIUnitTestCase
      */
     public function testRecognizeThrowsOnUnparsableResponse(): void
     {
-        $service = new ReceiptOcrService(http: $this->stubClientRaw('죄송합니다, 이미지를 읽을 수 없습니다.'));
+        $service = new ReceiptOcrService(ai: $this->stubAiRaw('죄송합니다, 이미지를 읽을 수 없습니다.'));
 
         $this->expectException(OcrProcessingException::class);
         $service->recognize($this->userId, $this->businessId, $this->fakeFile());
@@ -145,35 +141,47 @@ final class ReceiptOcrServiceTest extends CIUnitTestCase
      */
     public function testRecognizeThrowsOnApiError(): void
     {
-        $service = new ReceiptOcrService(http: $this->stubClientStatus(429));
+        $service = new ReceiptOcrService(ai: $this->stubAiStatus(429));
 
         $this->expectException(OcrProcessingException::class);
         $service->recognize($this->userId, $this->businessId, $this->fakeFile());
     }
 
     /**
-     * Anthropic 응답(JSON 텍스트 블록)을 흉내내는 CURLRequest 스텁.
-     *
-     * @param array<string, mixed> $ocrJson
+     * AI 클라이언트가 없으면(=키 미설정) 기존과 동일한 "설정 미완료" 안내로 판독 실패.
      */
-    private function stubClient(array $ocrJson): CURLRequest
+    public function testRecognizeThrowsWhenAiUnavailable(): void
     {
-        return $this->stubClientRaw(json_encode($ocrJson));
+        $service = new ReceiptOcrService(ai: null);
+
+        $this->expectException(OcrProcessingException::class);
+        $this->expectExceptionMessage('AI 판독 설정이 완료되지 않았습니다(API 키 없음).');
+        $service->recognize($this->userId, $this->businessId, $this->fakeFile());
     }
 
     /**
-     * 모델 출력 텍스트를 그대로 담은 200 응답 스텁.
+     * OCR JSON 을 텍스트 블록으로 담아 반환하는 AnthropicClient 스텁.
+     *
+     * @param array<string, mixed> $ocrJson
      */
-    private function stubClientRaw(string $modelText): CURLRequest
+    private function stubAi(array $ocrJson): AnthropicClient
     {
-        $body = json_encode(['content' => [['type' => 'text', 'text' => $modelText]]]);
-
-        return $this->makeClient(200, (string) $body);
+        return $this->stubAiRaw((string) json_encode($ocrJson));
     }
 
-    private function stubClientStatus(int $status): CURLRequest
+    /**
+     * 모델 출력 텍스트를 그대로 담은 200 응답 AnthropicClient 스텁.
+     */
+    private function stubAiRaw(string $modelText): AnthropicClient
     {
-        return $this->makeClient($status, '{"error":"rate_limited"}');
+        $body = (string) json_encode(['content' => [['type' => 'text', 'text' => $modelText]]]);
+
+        return new AnthropicClient($this->makeClient(200, $body), 'test-key', 'claude-sonnet-5', 25);
+    }
+
+    private function stubAiStatus(int $status): AnthropicClient
+    {
+        return new AnthropicClient($this->makeClient($status, '{"error":"rate_limited"}'), 'test-key', 'claude-sonnet-5', 25);
     }
 
     private function makeClient(int $status, string $body): CURLRequest
