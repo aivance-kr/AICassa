@@ -3,12 +3,14 @@
 namespace Config;
 
 use App\Libraries\AnthropicClient;
+use App\Libraries\SpreadsheetReader;
 use App\Models\TaxParameterModel;
 use App\Services\AccountClassifierService;
 use App\Services\AnomalyDetectionService;
 use App\Services\AssetService;
 use App\Services\BusinessService;
 use App\Services\DepreciationService;
+use App\Services\ExcelColumnMapperService;
 use App\Services\LedgerImportService;
 use App\Services\LedgerQueryParserService;
 use App\Services\LedgerService;
@@ -132,6 +134,31 @@ class Services extends BaseService
         }
 
         return new LedgerImportService();
+    }
+
+    /**
+     * 엑셀/CSV 임포트 컬럼 자동매핑 서비스(로컬 동의어 + AI 보완).
+     */
+    public static function excelColumnMapperService(bool $getShared = true): ExcelColumnMapperService
+    {
+        if ($getShared) {
+            return static::getSharedInstance('excelColumnMapperService');
+        }
+
+        // AI 클라이언트는 env 기반 주입(키 없으면 null → 로컬 동의어 매칭만 동작).
+        return new ExcelColumnMapperService(ai: AnthropicClient::fromEnv());
+    }
+
+    /**
+     * 업로드 파일(CSV/엑셀) → 문자열 그리드 리더.
+     */
+    public static function spreadsheetReader(bool $getShared = true): SpreadsheetReader
+    {
+        if ($getShared) {
+            return static::getSharedInstance('spreadsheetReader');
+        }
+
+        return new SpreadsheetReader();
     }
 
     /**
