@@ -51,6 +51,7 @@
         <a href="/admin/businesses" class="brand">📗 AICassa 간편장부</a>
         <nav>
             <a href="/admin/businesses">사업장 목록</a>
+            <a href="/admin/tax-qa">세무 Q&A</a>
         </nav>
         <div class="user">
             <?php $u = $authUser ?? null; ?>

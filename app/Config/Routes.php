@@ -14,6 +14,11 @@ $routes->group('admin', ['filter' => 'session'], static function ($routes): void
     // 업종코드 검색(사업장 폼 자동완성용 · 참조 데이터)
     $routes->get('industry-codes/search', 'Admin\IndustryCodeController::search');
 
+    // 세무 Q&A 챗봇(전역 · docs 근거 RAG)
+    $routes->get('tax-qa', 'Admin\TaxQaController::index');
+    $routes->post('tax-qa/ask', 'Admin\TaxQaController::ask');
+    $routes->get('tax-qa/source', 'Admin\TaxQaController::source');
+
     $routes->group('businesses', static function ($routes): void {
         $routes->get('', 'Admin\BusinessController::index');
         $routes->get('new', 'Admin\BusinessController::new');

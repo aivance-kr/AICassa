@@ -21,6 +21,7 @@ use App\Services\SummaryService;
 use App\Services\TaxFormExporter;
 use App\Services\TaxFormService;
 use App\Services\TaxParameterService;
+use App\Services\TaxQaService;
 use App\Services\TaxRuleResolver;
 use App\Services\VatCalculatorService;
 use CodeIgniter\Config\BaseService;
@@ -272,5 +273,18 @@ class Services extends BaseService
         }
 
         return new TaxFormExporter();
+    }
+
+    /**
+     * 세무 Q&A 챗봇 서비스(docs 근거 RAG · 인용 응답).
+     */
+    public static function taxQaService(bool $getShared = true): TaxQaService
+    {
+        if ($getShared) {
+            return static::getSharedInstance('taxQaService');
+        }
+
+        // AI 클라이언트는 env 기반 주입(키 없으면 null → 검색만 하고 "확인 불가" 응답).
+        return new TaxQaService(ai: AnthropicClient::fromEnv());
     }
 }
