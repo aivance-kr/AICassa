@@ -43,11 +43,12 @@ class AiRateLimitFilter implements FilterInterface
 
         $throttler = service('throttler');
 
-        // 정상 흐름은 session 필터가 선행하므로 로그인 사용자 ID 가 있다. 예외적 미인증은 IP 로 폴백.
+        // 정상 흐름은 session 필터가 선행하므로 로그인 사용자 ID(숫자) 가 있다. 예외적 미인증은 IP 로 폴백.
+        // 숫자 ID 는 캐시 키 예약문자가 없어 그대로 쓰고, IP 폴백만 예약문자({}()/\@:·IPv6 콜론)를 '-' 로 치환한다.
         $userId = auth()->id();
-        $scope  = $userId !== null ? 'u' . $userId : 'ip' . $request->getIPAddress();
-        // 캐시 키 예약문자({}()/\@:) 회피 — 콜론(IPv6 IP 포함) 등은 '-' 로 치환한다.
-        $key = 'ai-rate-' . (string) preg_replace('/[^A-Za-z0-9_]+/', '-', $scope);
+        $key    = $userId !== null
+            ? 'ai-rate-u' . $userId
+            : 'ai-rate-ip-' . (string) preg_replace('/[^A-Za-z0-9_]+/', '-', $request->getIPAddress());
 
         if ($throttler->check($key, $config->capacity, $config->seconds) === false) {
             return $this->rejected($request, $throttler->getTokenTime());

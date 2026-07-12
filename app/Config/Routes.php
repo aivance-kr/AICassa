@@ -45,7 +45,7 @@ $routes->group('admin', ['filter' => 'session'], static function ($routes): void
         $routes->post('(:num)/ledger/receipts/recognize', 'Admin\ReceiptOcrController::recognize/$1', ['filter' => 'aiRateLimit']);
         $routes->post('(:num)/ledger/classify-account', 'Admin\AccountClassifierController::suggest/$1', ['filter' => 'aiRateLimit']);
         $routes->get('(:num)/ledger/import', 'Admin\LedgerController::importForm/$1');
-        $routes->post('(:num)/ledger/import', 'Admin\LedgerController::import/$1');
+        $routes->post('(:num)/ledger/import', 'Admin\LedgerController::import/$1', ['filter' => 'aiRateLimit']);
         $routes->post('(:num)/ledger/import/confirm', 'Admin\LedgerController::importConfirm/$1');
         $routes->get('(:num)/ledger/(:num)/edit', 'Admin\LedgerController::edit/$1/$2');
         $routes->post('(:num)/ledger/(:num)', 'Admin\LedgerController::update/$1/$2');

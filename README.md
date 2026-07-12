@@ -104,6 +104,7 @@ Anthropic Claude 연동 인프라(`app/Libraries/AnthropicClient.php` · `env('A
 | `admin/businesses/{id}/assets/advise` | POST |
 | `admin/businesses/{id}/ledger/receipts/recognize` | POST |
 | `admin/businesses/{id}/ledger/classify-account` | POST |
+| `admin/businesses/{id}/ledger/import` | POST |
 | `admin/businesses/{id}/reports/anomalies` | POST |
 | `admin/businesses/{id}/ledger/search` | GET |
 
