@@ -59,6 +59,7 @@ $routes->group('admin', ['filter' => 'session'], static function ($routes): void
         // 자산대장 · 감가상각
         $routes->get('(:num)/assets', 'Admin\AssetController::index/$1');
         $routes->get('(:num)/assets/new', 'Admin\AssetController::new/$1');
+        $routes->post('(:num)/assets/advise', 'Admin\AssetAdvisorController::suggest/$1');
         $routes->post('(:num)/assets', 'Admin\AssetController::create/$1');
         $routes->get('(:num)/assets/(:num)/edit', 'Admin\AssetController::edit/$1/$2');
         $routes->post('(:num)/assets/(:num)', 'Admin\AssetController::update/$1/$2');

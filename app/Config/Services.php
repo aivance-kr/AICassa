@@ -7,6 +7,7 @@ use App\Libraries\SpreadsheetReader;
 use App\Models\TaxParameterModel;
 use App\Services\AccountClassifierService;
 use App\Services\AnomalyDetectionService;
+use App\Services\AssetAdvisorService;
 use App\Services\AssetService;
 use App\Services\BusinessService;
 use App\Services\DepreciationService;
@@ -234,6 +235,19 @@ class Services extends BaseService
         }
 
         return new AssetService();
+    }
+
+    /**
+     * 자산 등록 어시스트 서비스(품목명 → 분류·상각방법 제안 + 결정적 내용연수·소액자산 판정).
+     */
+    public static function assetAdvisorService(bool $getShared = true): AssetAdvisorService
+    {
+        if ($getShared) {
+            return static::getSharedInstance('assetAdvisorService');
+        }
+
+        // AI 클라이언트는 env 기반 주입(키 없으면 null → 이력·결정적 결과만 동작).
+        return new AssetAdvisorService(ai: AnthropicClient::fromEnv());
     }
 
     /**

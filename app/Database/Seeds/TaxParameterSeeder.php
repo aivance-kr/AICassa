@@ -77,6 +77,16 @@ class TaxParameterSeeder extends Seeder
                 'description' => '정률법 잔존가액 = 취득금액 ÷ 제수 (20 → 취득금액의 5%)',
             ],
             [
+                'param_key'   => 'low_value_asset_threshold',
+                'value_type'  => 'int',
+                'param_value' => '1000000',
+                'category'    => 'depreciation',
+                'label'       => '소액자산 즉시비용 한도',
+                'unit'        => '원',
+                'sort_order'  => 30,
+                'description' => '취득금액이 이 한도(거래단위) 이하이면 즉시비용(즉시상각) 처리 대상 후보',
+            ],
+            [
                 'param_key'   => 'income_tax_brackets',
                 'value_type'  => 'json',
                 'param_value' => json_encode($this->incomeTaxBrackets(), JSON_UNESCAPED_UNICODE),

@@ -25,7 +25,7 @@ final class TaxRuleResolver
     /**
      * 시행연도별 룰셋 메모(요청 단위). 여러 연도 스케줄·배치 반복 조회의 N+1 방지.
      *
-     * @var array<int, array{vat_divisor: int, memorandum_value: int, declining_residual_divisor: int}>|null
+     * @var array<int, array{vat_divisor: int, memorandum_value: int, declining_residual_divisor: int, low_value_asset_threshold?: int}>|null
      */
     private ?array $setsCache = null;
 
@@ -64,7 +64,7 @@ final class TaxRuleResolver
     /**
      * 시행연도별 룰셋 맵. DB(운영자 관리) 우선, 비어 있으면 Config 기본값.
      *
-     * @return array<int, array{vat_divisor: int, memorandum_value: int, declining_residual_divisor: int}>
+     * @return array<int, array{vat_divisor: int, memorandum_value: int, declining_residual_divisor: int, low_value_asset_threshold?: int}>
      */
     private function sets(): array
     {
