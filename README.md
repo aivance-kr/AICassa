@@ -91,6 +91,26 @@ Anthropic Claude 연동 인프라(`app/Libraries/AnthropicClient.php` · `env('A
 
 ---
 
+## 배포 (Deployment)
+
+`dev` → `main` PR을 머지하면 CD(`.github/workflows/deploy.yml`)가 운영 서버에 SSH 배포한다.
+CD 자동 절차: `git reset --hard origin/main` → `composer install --no-dev` → `php spark migrate --all -f` → 캐시 클리어 → Apache 무중단 리로드.
+
+> ⚠️ **`dev` → `main` 은 반드시 Merge commit 으로 머지한다(Squash 금지).**
+> Squash 하면 `main` 이 `dev` 조상에서 이탈해 이후 배포마다 3-way 충돌이 재발한다.
+
+### 배포 후 수동 절차
+
+- **참조데이터 시더는 자동 실행되지 않는다.** 최초 배포 또는 참조데이터(감가상각률·업종코드·연도별 세법 파라미터) 변경 시
+  서버에서 한 번 실행한다:
+  ```bash
+  php spark db:seed ReferenceDataSeeder
+  ```
+- 운영 `.env` 에 `ANTHROPIC_API_KEY`(선택 `ANTHROPIC_MODEL`, 기본 `claude-sonnet-5`)를 설정하면 AI 기능이 활성화된다.
+  미설정 시 비-AI 폴백으로 동작한다.
+
+---
+
 ## What is CodeIgniter?
 
 CodeIgniter is a PHP full-stack web framework that is light, fast, flexible and secure.
