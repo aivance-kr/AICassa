@@ -8,10 +8,10 @@ use App\Enums\EntryType;
 use App\Exceptions\NotFoundException;
 use App\Exceptions\OcrProcessingException;
 use App\Exceptions\ValidationException;
+use App\Libraries\AnthropicClient;
 use App\Models\AccountModel;
 use App\Models\BusinessModel;
 use App\Models\PartnerModel;
-use CodeIgniter\HTTP\CURLRequest;
 use CodeIgniter\HTTP\Files\UploadedFile;
 use Throwable;
 
@@ -24,16 +24,9 @@ use Throwable;
  */
 final class ReceiptOcrService
 {
-    /**
-     * 기본 모델(무배포 교체용으로 env('ANTHROPIC_MODEL') 오버라이드 가능).
-     */
-    private const DEFAULT_MODEL = 'claude-sonnet-5';
-
-    private const API_ENDPOINT = 'https://api.anthropic.com/v1/messages';
-    private const API_VERSION  = '2023-06-01';
-    private const TIMEOUT      = 25;   // 초. Vision 은 5초를 넘길 수 있어 명시적으로 늘린다.
-    private const MAX_TOKENS   = 1024;
-    private const MAX_BYTES    = 8 * 1024 * 1024; // 8MB
+    private const TIMEOUT    = 25;   // 초. Vision 은 5초를 넘길 수 있어 명시적으로 늘린다.
+    private const MAX_TOKENS = 1024;
+    private const MAX_BYTES  = 8 * 1024 * 1024; // 8MB
 
     /**
      * @var list<string> 실제 MIME(finfo) 화이트리스트.
@@ -43,20 +36,21 @@ final class ReceiptOcrService
     private BusinessModel $businesses;
     private AccountModel $accounts;
     private PartnerModel $partners;
-    private CURLRequest $http;
+    private ?AnthropicClient $ai;
     private AccountClassifierService $classifier;
 
     public function __construct(
         ?BusinessModel $businesses = null,
         ?AccountModel $accounts = null,
         ?PartnerModel $partners = null,
-        ?CURLRequest $http = null,
+        ?AnthropicClient $ai = null,
         ?AccountClassifierService $classifier = null,
     ) {
         $this->businesses = $businesses ?? model(BusinessModel::class);
         $this->accounts   = $accounts ?? model(AccountModel::class);
         $this->partners   = $partners ?? model(PartnerModel::class);
-        $this->http       = $http ?? service('curlrequest');
+        // AI 클라이언트는 Services 팩토리에서 env 기반 주입. null 이면 키 없음(=AI 판독 비활성).
+        $this->ai         = $ai;
         $this->classifier = $classifier ?? service('accountClassifierService');
     }
 
@@ -84,9 +78,17 @@ final class ReceiptOcrService
         $absolutePath = WRITEPATH . 'uploads/' . $relativePath;
 
         try {
+            // 키가 없으면 AI 클라이언트가 주입되지 않는다(fromEnv() → null). 기존과 동일한 안내로 폴백.
+            // 지역 변수로 받아 이후 호출 지점까지 non-null 이 좁혀지도록 한다(PHPStan).
+            $ai = $this->ai;
+            if ($ai === null) {
+                throw new OcrProcessingException('AI 판독 설정이 완료되지 않았습니다(API 키 없음).');
+            }
+
             $prompt = $this->buildPrompt((bool) $business['is_manufacturing']);
             $base64 = base64_encode((string) file_get_contents($absolutePath));
-            $text   = $this->callClaude($base64, $mime, $prompt);
+            // Vision 호출 실패는 RuntimeException → 아래 catch 가 OcrProcessingException 으로 감싼다.
+            $text   = $ai->completeVision($base64, $mime, $prompt, self::MAX_TOKENS, self::TIMEOUT);
             $result = OcrResult::fromArray($this->parseJson($text));
 
             return $this->toResponse($businessId, $relativePath, $result, (bool) $business['is_manufacturing']);
@@ -118,71 +120,6 @@ final class ReceiptOcrService
         if (! in_array((string) $file->getMimeType(), self::ALLOWED_MIMES, true)) {
             throw new ValidationException(['receipt' => 'JPG·PNG·WEBP 이미지만 업로드할 수 있습니다.']);
         }
-    }
-
-    /**
-     * Claude Vision(Anthropic Messages API) 호출. 응답 텍스트(모델 출력)를 반환한다.
-     *
-     * @throws OcrProcessingException
-     */
-    private function callClaude(string $imageBase64, string $mediaType, string $prompt): string
-    {
-        $apiKey = (string) env('ANTHROPIC_API_KEY', '');
-        if ($apiKey === '') {
-            throw new OcrProcessingException('AI 판독 설정이 완료되지 않았습니다(API 키 없음).');
-        }
-
-        try {
-            $response = $this->http->request('POST', self::API_ENDPOINT, [
-                'timeout'     => self::TIMEOUT,
-                'http_errors' => false, // 상태코드를 직접 판정한다.
-                'headers'     => [
-                    'x-api-key'         => $apiKey,
-                    'anthropic-version' => self::API_VERSION,
-                    'content-type'      => 'application/json',
-                ],
-                'json' => [
-                    'model'      => (string) (env('ANTHROPIC_MODEL') ?: self::DEFAULT_MODEL),
-                    'max_tokens' => self::MAX_TOKENS,
-                    'messages'   => [[
-                        'role'    => 'user',
-                        'content' => [
-                            [
-                                'type'   => 'image',
-                                'source' => [
-                                    'type'       => 'base64',
-                                    'media_type' => $mediaType,
-                                    'data'       => $imageBase64,
-                                ],
-                            ],
-                            ['type' => 'text', 'text' => $prompt],
-                        ],
-                    ]],
-                ],
-            ]);
-        } catch (Throwable $e) {
-            log_message('error', 'Anthropic 호출 실패: {msg}', ['msg' => $e->getMessage()]);
-
-            throw new OcrProcessingException('AI 판독 서버에 연결하지 못했습니다.', 0, $e);
-        }
-
-        if ($response->getStatusCode() !== 200) {
-            log_message('error', 'Anthropic 응답 오류 {code}: {body}', [
-                'code' => $response->getStatusCode(),
-                'body' => substr((string) $response->getBody(), 0, 500),
-            ]);
-
-            throw new OcrProcessingException('AI 판독에 실패했습니다(외부 서비스 오류).');
-        }
-
-        /** @var array<string, mixed>|null $body */
-        $body = json_decode((string) $response->getBody(), true);
-        $text = $body['content'][0]['text'] ?? null;
-        if (! is_string($text)) {
-            throw new OcrProcessingException('AI 응답 형식이 올바르지 않습니다.');
-        }
-
-        return $text;
     }
 
     /**
