@@ -19,8 +19,7 @@ final class PartnerServiceTest extends CIUnitTestCase
 {
     use DatabaseTestTrait;
 
-    protected $namespace = null;
-
+    protected $namespace;
     private PartnerService $service;
     private int $userId;
     private int $businessId;
@@ -94,7 +93,7 @@ final class PartnerServiceTest extends CIUnitTestCase
 
     public function testParseCsvSkipsHeader(): void
     {
-        $csv = "거래처상호,사업자등록번호,연락처\n가나상사,111-22-33333,02-123-4567\n다라상사,222-33-44444,";
+        $csv  = "거래처상호,사업자등록번호,연락처\n가나상사,111-22-33333,02-123-4567\n다라상사,222-33-44444,";
         $rows = $this->service->parseCsv($csv);
 
         $this->assertCount(2, $rows);

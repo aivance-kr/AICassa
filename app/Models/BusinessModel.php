@@ -15,14 +15,18 @@ class BusinessModel extends Model
     protected $useSoftDeletes = true;
     protected $useTimestamps  = true;
 
-    /** @var list<string> */
+    /**
+     * @var list<string>
+     */
     protected $allowedFields = [
         'user_id', 'name', 'owner_name', 'birth_date', 'biz_reg_no',
         'address', 'phone', 'industry_code', 'industry_name',
         'income_type', 'is_manufacturing',
     ];
 
-    /** @var array<string, string> */
+    /**
+     * @var array<string, string>
+     */
     protected $validationRules = [
         'user_id'    => 'required|is_natural_no_zero',
         'name'       => 'required|max_length[200]',

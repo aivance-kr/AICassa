@@ -56,7 +56,7 @@ class BusinessController extends BaseAdminController
     /**
      * 수정 폼.
      */
-    public function edit(int $id): string|RedirectResponse
+    public function edit(int $id): RedirectResponse|string
     {
         try {
             $business = service('businessService')->get($this->authUserId(), $id);

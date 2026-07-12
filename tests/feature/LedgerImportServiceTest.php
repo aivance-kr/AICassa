@@ -1,5 +1,7 @@
 <?php
 
+use App\Database\Seeds\AccountSeeder;
+use App\Exceptions\NotFoundException;
 use App\Models\BusinessModel;
 use App\Models\PartnerModel;
 use App\Services\LedgerImportService;
@@ -18,9 +20,8 @@ final class LedgerImportServiceTest extends CIUnitTestCase
 {
     use DatabaseTestTrait;
 
-    protected $seed      = \App\Database\Seeds\AccountSeeder::class;
-    protected $namespace = null;
-
+    protected $seed = AccountSeeder::class;
+    protected $namespace;
     private LedgerImportService $service;
     private int $userId;
     private int $businessId;
@@ -51,6 +52,43 @@ final class LedgerImportServiceTest extends CIUnitTestCase
         $this->assertCount(1, $rows);
         $this->assertSame('수입', $rows[0]['type']);
         $this->assertSame('세금계산서', $rows[0]['evidence']);
+    }
+
+    public function testParseWithMappingReordersColumns(): void
+    {
+        // 소스 열 순서: 금액, 날짜, 거래내용, 구분 (표준과 다름). 계정·거래처·비고 미매핑.
+        $dataRows = [
+            ['1,000,000', '2024-03-01', '3월매출', '수입'],
+            ['', '', '', ''], // 빈 행 → 건너뜀
+            ['500000', '2024-03-05', '임차료', '비용'],
+        ];
+        $mapping = ['amount' => 0, 'date' => 1, 'description' => 2, 'type' => 3];
+
+        $rows = $this->service->parseWithMapping($dataRows, $mapping);
+
+        $this->assertCount(2, $rows);
+        $this->assertSame('2024-03-01', $rows[0]['date']);
+        $this->assertSame('수입', $rows[0]['type']);
+        $this->assertSame('3월매출', $rows[0]['description']);
+        $this->assertSame('1,000,000', $rows[0]['amount']);
+        // 미매핑 필드는 빈 문자열
+        $this->assertSame('', $rows[0]['account']);
+        $this->assertSame('', $rows[0]['partner']);
+        $this->assertSame('', $rows[0]['evidence']);
+    }
+
+    public function testParseWithMappingThenImport(): void
+    {
+        $dataRows = [
+            ['3월매출', '수입', '2024-03-01', '1000000', '세금계산서'],
+        ];
+        $mapping = ['description' => 0, 'type' => 1, 'date' => 2, 'amount' => 3, 'evidence' => 4];
+
+        $rows   = $this->service->parseWithMapping($dataRows, $mapping);
+        $result = $this->service->import($this->userId, $this->businessId, $rows);
+
+        $this->assertSame(1, $result->imported);
+        $this->assertSame(0, $result->skipped);
     }
 
     public function testImportCountsAndComputesVat(): void
@@ -85,7 +123,7 @@ final class LedgerImportServiceTest extends CIUnitTestCase
         $other = new UserModel();
         $other->save(new User(['username' => 'other1', 'email' => 'x@test.com', 'password' => 'secret12345']));
 
-        $this->expectException(\App\Exceptions\NotFoundException::class);
+        $this->expectException(NotFoundException::class);
         $this->service->import((int) $other->getInsertID(), $this->businessId, []);
     }
 }

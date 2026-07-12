@@ -127,3 +127,6 @@ _modules/*
 
 # PHPStan(codeigniter 확장) 스키마 캐시
 /tmp/
+
+# PHP CS Fixer 캐시
+/.php-cs-fixer.cache

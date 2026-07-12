@@ -2,7 +2,9 @@
 
 use App\Enums\DepreciationMethod;
 use App\Services\DepreciationService;
+use App\Services\TaxRuleResolver;
 use CodeIgniter\Test\CIUnitTestCase;
+use Config\TaxRules;
 
 /**
  * 감가상각비 계산 검증 (VBA sQuery연도별감가상각정보 이식).
@@ -107,5 +109,35 @@ final class DepreciationServiceTest extends CIUnitTestCase
         // 처분연도: 2,000,000 × 6/12 = 1,000,000
         $this->assertSame(1_000_000, $schedule[2]['depreciation']);
         $this->assertSame(2022, $schedule[2]['year']);
+    }
+
+    /**
+     * 개정 세법이 스케줄 중간 연도부터 적용되는 경우(연도별 룰셋 분기 재현).
+     * 2027년부터 비망가액이 5,000원으로 개정된 가상 룰셋을 사용해,
+     * 완전상각 종료 시점의 잔존 장부가액이 연도별 룰셋을 따르는지 검증한다.
+     */
+    public function testAppliesPerYearMemorandumValueAcrossSchedule(): void
+    {
+        $config       = new TaxRules();
+        $config->sets = [
+            2023 => ['vat_divisor' => 10, 'memorandum_value' => 1000, 'declining_residual_divisor' => 20],
+            2027 => ['vat_divisor' => 10, 'memorandum_value' => 5000, 'declining_residual_divisor' => 20],
+        ];
+        $service = new DepreciationService(new TaxRuleResolver($config));
+
+        // 2025년 취득, 내용연수 5년(0.2), 취득금액 1,000만원 → 완전상각은 2029년
+        $schedule = $service->generateSchedule(
+            DepreciationMethod::StraightLine,
+            10_000_000,
+            0.2,
+            2025,
+            1,
+        );
+
+        // 완전상각 종료 연도(2029)는 2027 개정 룰셋 적용 → 비망가액 5,000원 잔존
+        $last = end($schedule);
+        $this->assertSame(2029, $last['year']);
+        $this->assertSame(5000, $last['book_value']);
+        $this->assertSame(9_995_000, $last['accumulated']);
     }
 }

@@ -1,5 +1,6 @@
 <?php
 
+use App\Database\Seeds\AccountSeeder;
 use App\DTOs\LedgerData;
 use App\Enums\EntryType;
 use App\Enums\EvidenceType;
@@ -22,9 +23,8 @@ final class LedgerServiceTest extends CIUnitTestCase
 {
     use DatabaseTestTrait;
 
-    protected $seed      = \App\Database\Seeds\AccountSeeder::class;
-    protected $namespace = null;
-
+    protected $seed = AccountSeeder::class;
+    protected $namespace;
     private LedgerService $service;
     private int $userId;
     private int $businessId;
@@ -113,6 +113,19 @@ final class LedgerServiceTest extends CIUnitTestCase
         $this->assertSame(30000, (int) $copy['vat']);
     }
 
+    public function testInvalidReceiptPathRejected(): void
+    {
+        // 클라이언트가 hidden 필드로 임의 경로(경로 조작)를 주입하면 저장을 거부한다.
+        $this->expectException(ValidationException::class);
+        $this->service->create($this->userId, $this->businessId, new LedgerData(
+            entryDate: '2024-03-15',
+            entryType: EntryType::Expense,
+            description: '위조 첨부',
+            supplyAmount: 10_000,
+            receiptPath: '../../.env',
+        ));
+    }
+
     public function testOtherUserCannotAccess(): void
     {
         $other = new UserModel();
@@ -126,16 +139,27 @@ final class LedgerServiceTest extends CIUnitTestCase
     {
         $sales = $this->salesAccountId();
         $this->service->create($this->userId, $this->businessId, new LedgerData(
-            entryDate: '2023-06-01', entryType: EntryType::Income, description: '작년매출',
-            supplyAmount: 1_000_000, accountId: $sales, evidenceType: EvidenceType::TaxInvoice,
+            entryDate: '2023-06-01',
+            entryType: EntryType::Income,
+            description: '작년매출',
+            supplyAmount: 1_000_000,
+            accountId: $sales,
+            evidenceType: EvidenceType::TaxInvoice,
         ));
         $this->service->create($this->userId, $this->businessId, new LedgerData(
-            entryDate: '2024-06-01', entryType: EntryType::Income, description: '올해매출',
-            supplyAmount: 2_000_000, accountId: $sales, evidenceType: EvidenceType::TaxInvoice,
+            entryDate: '2024-06-01',
+            entryType: EntryType::Income,
+            description: '올해매출',
+            supplyAmount: 2_000_000,
+            accountId: $sales,
+            evidenceType: EvidenceType::TaxInvoice,
         ));
         $this->service->create($this->userId, $this->businessId, new LedgerData(
-            entryDate: '2024-07-01', entryType: EntryType::Expense, description: '올해비용',
-            supplyAmount: 500_000, evidenceType: EvidenceType::TaxInvoice,
+            entryDate: '2024-07-01',
+            entryType: EntryType::Expense,
+            description: '올해비용',
+            supplyAmount: 500_000,
+            evidenceType: EvidenceType::TaxInvoice,
         ));
 
         // 2024년만 필터
@@ -150,5 +174,46 @@ final class LedgerServiceTest extends CIUnitTestCase
         // 계정명이 부가된다
         $incomeRow = array_values(array_filter($entries, static fn ($e) => $e['entry_type'] === 'income'))[0];
         $this->assertSame('매출', $incomeRow['account_name']);
+    }
+
+    /**
+     * 자연어 검색용 확장 필터(금액 범위·거래내용 키워드·계정과목)가 실제로 적용된다.
+     */
+    public function testAdvancedFilters(): void
+    {
+        $sales = $this->salesAccountId();
+        $this->service->create($this->userId, $this->businessId, new LedgerData(
+            entryDate: '2024-03-01',
+            entryType: EntryType::Income,
+            description: '스타벅스 상품권 판매',
+            supplyAmount: 300_000,
+            accountId: $sales,
+            evidenceType: EvidenceType::TaxInvoice,
+        ));
+        $this->service->create($this->userId, $this->businessId, new LedgerData(
+            entryDate: '2024-04-01',
+            entryType: EntryType::Income,
+            description: '대형 납품',
+            supplyAmount: 3_000_000,
+            accountId: $sales,
+            evidenceType: EvidenceType::TaxInvoice,
+        ));
+
+        // 금액 하한: 100만원 이상 → 대형 납품 1건
+        $byAmount = $this->service->listForBusiness($this->userId, $this->businessId, ['amount_min' => 1_000_000]);
+        $this->assertCount(1, $byAmount);
+        $this->assertSame('대형 납품', $byAmount[0]['description']);
+
+        // 거래내용 키워드: '스타벅스' → 1건
+        $byKeyword = $this->service->listForBusiness($this->userId, $this->businessId, ['keyword' => '스타벅스']);
+        $this->assertCount(1, $byKeyword);
+
+        // 계정과목 필터 + 금액 상한 조합
+        $byAccount = $this->service->listForBusiness($this->userId, $this->businessId, [
+            'account_id' => $sales,
+            'amount_max' => 1_000_000,
+        ]);
+        $this->assertCount(1, $byAccount);
+        $this->assertSame('스타벅스 상품권 판매', $byAccount[0]['description']);
     }
 }

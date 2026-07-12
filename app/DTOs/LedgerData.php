@@ -18,7 +18,9 @@ final readonly class LedgerData
         public ?int $accountId = null,
         public ?int $partnerId = null,
         public ?EvidenceType $evidenceType = null,
-    ) {}
+        public ?string $receiptPath = null,
+    ) {
+    }
 
     /**
      * @param array<string, mixed> $data
@@ -33,6 +35,7 @@ final readonly class LedgerData
             accountId: self::toNullableInt($data['account_id'] ?? null),
             partnerId: self::toNullableInt($data['partner_id'] ?? null),
             evidenceType: EvidenceType::tryFrom((string) ($data['evidence_type'] ?? '')),
+            receiptPath: self::toNullableString($data['receipt_path'] ?? null),
         );
     }
 
@@ -55,5 +58,19 @@ final readonly class LedgerData
         }
 
         return (int) $value;
+    }
+
+    /**
+     * 빈 문자열은 null 로. 저장 경로 문자열 정규화용.
+     */
+    private static function toNullableString(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $value = trim((string) $value);
+
+        return $value === '' ? null : $value;
     }
 }

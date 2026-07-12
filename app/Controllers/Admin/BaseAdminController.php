@@ -10,7 +10,9 @@ use App\Controllers\BaseController;
  */
 abstract class BaseAdminController extends BaseController
 {
-    /** @var list<string> */
+    /**
+     * @var list<string>
+     */
     protected $helpers = ['form', 'url'];
 
     /**

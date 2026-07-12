@@ -13,7 +13,7 @@ class CreateBusinesses extends Migration
     public function up(): void
     {
         $this->forge->addField([
-            'id'               => ['type' => 'BIGINT', 'unsigned' => true, 'auto_increment' => true],
+            'id' => ['type' => 'BIGINT', 'unsigned' => true, 'auto_increment' => true],
             // Shield users.id 는 INT UNSIGNED 이므로 FK 컬럼 타입을 일치시킨다
             'user_id'          => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true],
             'name'             => ['type' => 'VARCHAR', 'constraint' => 200],

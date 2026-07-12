@@ -50,18 +50,18 @@ final class LedgerService
     {
         $this->assertOwned($userId, $businessId);
 
-        $entries     = $this->ledger->filtered($businessId, $filters);
-        $accountMap  = $this->accounts->nameMap();
-        $partnerMap  = $this->partnerNameMap($businessId);
+        $entries    = $this->ledger->filtered($businessId, $filters);
+        $accountMap = $this->accounts->nameMap();
+        $partnerMap = $this->partnerNameMap($businessId);
 
         return array_map(static function (array $row) use ($accountMap, $partnerMap): array {
-            $accountId              = $row['account_id'] === null ? null : (int) $row['account_id'];
-            $partnerId              = $row['partner_id'] === null ? null : (int) $row['partner_id'];
-            $row['account_name']    = $accountId !== null ? ($accountMap[$accountId] ?? '') : '';
-            $row['partner_name']    = $partnerId !== null ? ($partnerMap[$partnerId] ?? '') : '';
+            $accountId               = $row['account_id'] === null ? null : (int) $row['account_id'];
+            $partnerId               = $row['partner_id'] === null ? null : (int) $row['partner_id'];
+            $row['account_name']     = $accountId !== null ? ($accountMap[$accountId] ?? '') : '';
+            $row['partner_name']     = $partnerId !== null ? ($partnerMap[$partnerId] ?? '') : '';
             $row['entry_type_label'] = (EntryType::tryFrom((string) $row['entry_type']) ?? EntryType::Expense)->label();
-            $evidence               = EvidenceType::tryFrom((string) ($row['evidence_type'] ?? ''));
-            $row['evidence_label']  = $evidence?->label() ?? '';
+            $evidence                = EvidenceType::tryFrom((string) ($row['evidence_type'] ?? ''));
+            $row['evidence_label']   = $evidence?->label() ?? '';
 
             return $row;
         }, $entries);
@@ -173,6 +173,7 @@ final class LedgerService
             'supply_amount' => (int) $src['supply_amount'],
             'vat'           => (int) $src['vat'],
             'evidence_type' => $src['evidence_type'],
+            'receipt_path'  => $src['receipt_path'] ?? null,
         ];
 
         if (! $this->ledger->insert($row)) {
@@ -201,11 +202,12 @@ final class LedgerService
      */
     private function toRow(int $businessId, LedgerData $data): array
     {
-        $vat = $this->vat->calculate($data->supplyAmount, $data->evidenceType ?? EvidenceType::Other);
+        $fiscalYear = (int) substr($data->entryDate, 0, 4);
+        $vat        = $this->vat->calculate($data->supplyAmount, $data->evidenceType ?? EvidenceType::Other, $fiscalYear);
 
         return [
             'business_id'   => $businessId,
-            'fiscal_year'   => (int) substr($data->entryDate, 0, 4),
+            'fiscal_year'   => $fiscalYear,
             'entry_date'    => $data->entryDate,
             'entry_type'    => $data->entryType->value,
             'account_id'    => $data->accountId,
@@ -214,6 +216,7 @@ final class LedgerService
             'supply_amount' => $data->supplyAmount,
             'vat'           => $vat,
             'evidence_type' => $data->evidenceType?->value,
+            'receipt_path'  => $data->receiptPath,
         ];
     }
 
@@ -235,13 +238,32 @@ final class LedgerService
         if ($data->partnerId !== null && $this->partners->findScoped($businessId, $data->partnerId) === null) {
             throw new ValidationException(['partner_id' => '해당 사업장의 거래처가 아닙니다.']);
         }
+
+        $this->validateReceiptPath($data->receiptPath);
+    }
+
+    /**
+     * 증빙 첨부 경로 검증. 클라이언트가 hidden 필드로 임의 문자열을 주입할 수 있으므로,
+     * AI 판독이 저장한 랜덤 파일명 형식(receipts/{타임스탬프}_{20 hex}.{ext})과 실제 존재를 확인한다.
+     * (경로 조작·타 파일 참조 방지)
+     */
+    private function validateReceiptPath(?string $receiptPath): void
+    {
+        if ($receiptPath === null) {
+            return;
+        }
+
+        $isValidName = preg_match('/^receipts\/\d+_[0-9a-f]{20}\.[a-z0-9]+$/', $receiptPath) === 1;
+        if (! $isValidName || ! is_file(WRITEPATH . 'uploads/' . $receiptPath)) {
+            throw new ValidationException(['receipt_path' => '유효하지 않은 증빙 첨부입니다.']);
+        }
     }
 
     private function categoryFor(EntryType $type): AccountCategory
     {
         return match ($type) {
-            EntryType::Income                             => AccountCategory::Income,
-            EntryType::Expense                            => AccountCategory::Expense,
+            EntryType::Income                                  => AccountCategory::Income,
+            EntryType::Expense                                 => AccountCategory::Expense,
             EntryType::AssetPurchase, EntryType::AssetDisposal => AccountCategory::Asset,
         };
     }
@@ -252,6 +274,7 @@ final class LedgerService
     private function partnerNameMap(int $businessId): array
     {
         $map = [];
+
         foreach ($this->partners->forBusiness($businessId) as $row) {
             $map[(int) $row['id']] = (string) $row['name'];
         }
@@ -264,5 +287,57 @@ final class LedgerService
         if ($this->businesses->findOwned($userId, $businessId) === null) {
             throw new NotFoundException('사업장을 찾을 수 없습니다.');
         }
+    }
+
+    /**
+     * 적용된 필터를 사람이 읽을 수 있는 요약(칩)으로 변환한다(자연어 검색 해석 결과 노출용).
+     *
+     * @param array<string, mixed> $filters
+     *
+     * @return list<string>
+     */
+    public function filterSummary(int $businessId, array $filters): array
+    {
+        $chips = [];
+
+        if (! empty($filters['entry_type'])) {
+            $type = EntryType::tryFrom((string) $filters['entry_type']);
+            if ($type !== null) {
+                $chips[] = '구분: ' . $type->label();
+            }
+        }
+        if (! empty($filters['account_id'])) {
+            /** @var array<string, mixed>|null $account */
+            $account = $this->accounts->find((int) $filters['account_id']);
+            if ($account !== null) {
+                $chips[] = '계정과목: ' . (string) $account['name'];
+            }
+        }
+        if (! empty($filters['partner_id'])) {
+            $name = $this->partnerNameMap($businessId)[(int) $filters['partner_id']] ?? null;
+            if ($name !== null) {
+                $chips[] = '거래처: ' . $name;
+            }
+        }
+        if (! empty($filters['fiscal_year'])) {
+            $chips[] = '귀속연도: ' . (int) $filters['fiscal_year'];
+        }
+        if (! empty($filters['date_from'])) {
+            $chips[] = '시작일: ' . (string) $filters['date_from'];
+        }
+        if (! empty($filters['date_to'])) {
+            $chips[] = '종료일: ' . (string) $filters['date_to'];
+        }
+        if (isset($filters['amount_min']) && $filters['amount_min'] !== '') {
+            $chips[] = '최소금액: ' . number_format((int) $filters['amount_min']) . '원';
+        }
+        if (isset($filters['amount_max']) && $filters['amount_max'] !== '') {
+            $chips[] = '최대금액: ' . number_format((int) $filters['amount_max']) . '원';
+        }
+        if (! empty($filters['keyword'])) {
+            $chips[] = '검색어: ' . (string) $filters['keyword'];
+        }
+
+        return $chips;
     }
 }

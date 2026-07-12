@@ -7,6 +7,7 @@
 > 도메인 분석·설계·계산식 명세는 `docs/` 참조:
 > - `docs/간편장부_웹ERP_분석설계.md` — 데이터 모델·아키텍처·로드맵
 > - `docs/간편장부_계산식명세.md` — 부가세·감가상각·소득금액 계산 규칙(VBA 역설계)
+> - `docs/신고서식_대조_검증.md` — 공식 서식 필드 대조·계산 검증·갭(세무사 검토 대상)
 
 ---
 
@@ -26,6 +27,12 @@
 ---
 
 ## 로컬 환경 설정
+
+> **⚠️ Windows 환경이면 개발·테스트를 WSL 에서 수행한다.**
+> Windows 체크아웃(`E:\claude_works\AICassa`)에는 **PHP·Composer 가 없다** — 서버 구동·마이그레이션·`composer check`·PHPUnit 을 실행할 수 없다.
+> 코드 편집은 Windows/WSL 어디서든 가능하나 **실행·테스트·정적분석은 반드시 WSL 클론**(`~/claude-works/AICassa`, Ubuntu-24.04)에서 한다.
+> 상세 절차·클론 동기화는 아래 [커맨드 › 로컬 검증은 WSL 클론에서 실행](#로컬-검증은-wsl-클론에서-실행-ci-왕복-예방) 참조.
+
 ```bash
 cp env .env          # env 파일을 .env로 복사 후 아래 필수 키 설정
 composer install
@@ -54,8 +61,24 @@ php spark swagger:generate    # OpenAPI 스펙 생성 (public/swagger.json)
 php spark routes              # 라우트 목록
 composer test                 # PHPUnit 단독 실행
 composer analyse              # PHPStan 단독 실행
-composer check                # PHPStan + PHPUnit 순차 실행
+composer cs                   # PHP CS Fixer 검사(dry-run) — CI와 동일
+composer cs-fix               # PHP CS Fixer 자동 수정
+composer check                # CS Fixer → PHPStan → PHPUnit 순차 (CI 게이트와 동일, 푸시 전 권장)
 ```
+
+### 로컬 검증은 WSL 클론에서 실행 (CI 왕복 예방)
+Windows 체크아웃(`E:\claude_works\AICassa`)에는 **PHP·Composer가 없다**. 따라서 `composer check` 등 코드 검증은 **별도 WSL 클론**에서 실행한다. 이 단계를 건너뛰면 CS/PHPStan/PHPUnit 실패를 CI에서야 발견해 커밋 왕복이 생긴다.
+
+- **WSL 클론 경로**: `~/claude-works/AICassa` (Ubuntu-24.04) — Windows 체크아웃과 **별개의 클론**이다. 기본 CLI `php`=8.5(확장 완비), dev 의존성이 `ext-sqlite3` 요구.
+- **실행 방식**: `wsl.exe -d Ubuntu-24.04 -- bash -lc 'cd ~/claude-works/AICassa && <명령>'`. 중첩 따옴표·`$()`·리다이렉트는 인터롭에서 깨지므로, 복잡하면 스크래치패드에 `.sh`를 쓰고 `/mnt/c/...` 경로로 실행한다.
+- **두 클론 동기화**: 별개 클론이므로 Windows에서 커밋·푸시한 뒤 WSL에서 `git fetch origin && git checkout <branch> && git pull` 로 맞춘 다음 검증한다.
+
+푸시(또는 PR 리뷰 요청) 전 권장 순서 — WSL 클론에서:
+```bash
+composer cs-fix     # 포맷 자동수정(정렬·빈줄·import·docblock) — CS 왕복을 근본 예방
+composer check      # CS Fixer → PHPStan(L6) → PHPUnit, CI 게이트와 동일
+```
+`cs-fix`가 수정한 파일은 커밋에 반드시 포함한다(WSL에서 커밋·푸시하거나 변경을 Windows로 되가져온다). 마이그레이션이 필요한 검증은 `php spark migrate --all` 사용(그냥 `migrate`는 Shield `users` 테이블 누락으로 FK 실패).
 
 ---
 
@@ -194,7 +217,7 @@ public function index() { ... }
 코드 작성 후 반드시 통과해야 한다. 레벨 6 (`phpstan.neon`), 대상 `app/` (Views 제외).
 ```bash
 composer analyse   # PHPStan 단독
-composer check     # PHPStan + PHPUnit
+composer check     # CS Fixer → PHPStan → PHPUnit (푸시 전 이걸로 CI 미리 검증)
 ```
 - 새 클래스·메서드는 `array<string, mixed>` 등 제네릭 타입 명시 필수
 - `@phpstan-ignore` 주석으로 억제 금지 — 원인을 찾아 수정
@@ -209,6 +232,17 @@ feature/* → (PR) → dev → (PR) → main
 - 머지 방식: `feature/* → dev`는 **Squash and merge**, `dev → main`(배포)은 **Merge commit** (⚠️ Squash 금지)
   - dev → main 을 Squash 하면 main 이 dev 조상에서 이탈해 이후 배포마다 3-way 충돌이 재발한다. 반드시 merge commit 으로 main 을 dev 의 조상으로 유지한다.
 - `main`·`dev` 직접 push 금지
+
+---
+
+## CI / CD (GitHub Actions)
+- **CI** (`.github/workflows/ci.yml`): `dev`·`main`·`feature/**` push + PR 시 실행. mysql:8.0 서비스에서 **PHP CS Fixer → PHPStan(level6) → PHPUnit** 순차.
+- **CD** (`.github/workflows/deploy.yml`): `main` push(= dev→main PR 머지) + 수동(`workflow_dispatch`) 시 SSH 배포. 동시성 `deploy-production`(1개, 중단 안 함).
+  - 서버 절차: `git reset --hard origin/main` → `writable/` 생성(마이그레이션 전 필수) → `composer install --no-dev` → `spark migrate --all -f`(출력 예외 감지 시 중단) → `cache:clear` → `systemctl reload apache2`(무중단).
+  - ⚠️ `spark migrate`는 실패해도 종료코드 0 → 출력에서 예외 패턴 검사로 중단 판정.
+  - **시더는 자동 실행 안 함**(참조 데이터는 최초 1회 수동): `php spark db:seed ReferenceDataSeeder`.
+- **필요 GitHub Secrets**(production 환경): `DEPLOY_HOST` · `DEPLOY_USER` · `DEPLOY_SSH_KEY` · `DEPLOY_PORT` · `DEPLOY_PATH`.
+- **서버 사전 준비(1회)**: 읽기전용 deploy key(SSH 리모트), 운영 `.env`(실 DB 접속정보), 비밀번호 없는 sudo(`systemctl reload apache2`), DocumentRoot=`public/`, `writable/` www-data 쓰기권한(권장 `chmod 2775` setgid).
 
 ### 기능 개발 시작
 ```bash
