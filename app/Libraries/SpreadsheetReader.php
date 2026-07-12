@@ -2,6 +2,7 @@
 
 namespace App\Libraries;
 
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use RuntimeException;
 use Throwable;
@@ -17,7 +18,9 @@ use Throwable;
  */
 final class SpreadsheetReader
 {
-    /** 읽을 최대 행 수(헤더 포함). 과대 파일 방어. */
+    /**
+     * 읽을 최대 행 수(헤더 포함). 과대 파일 방어.
+     */
     private const MAX_ROWS = 10000;
 
     /**
@@ -52,6 +55,7 @@ final class SpreadsheetReader
         $lines = preg_split('/\r\n|\r|\n/', trim($utf8)) ?: [];
 
         $grid = [];
+
         foreach ($lines as $line) {
             if (trim($line) === '') {
                 continue;
@@ -85,11 +89,13 @@ final class SpreadsheetReader
 
         $highestRow = min($sheet->getHighestDataRow(), self::MAX_ROWS);
         $highestCol = $sheet->getHighestDataColumn();
-        $colCount   = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($highestCol);
+        $colCount   = Coordinate::columnIndexFromString($highestCol);
 
         $grid = [];
+
         for ($row = 1; $row <= $highestRow; $row++) {
             $cells = [];
+
             for ($col = 1; $col <= $colCount; $col++) {
                 $cells[] = trim((string) $sheet->getCell([$col, $row])->getFormattedValue());
             }

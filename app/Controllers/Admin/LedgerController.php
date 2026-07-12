@@ -391,6 +391,7 @@ class LedgerController extends BaseAdminController
         }
 
         $ttl = 3600; // 1시간 경과한 임시 업로드는 제거
+
         foreach (glob($dir . '/*') ?: [] as $path) {
             if (is_file($path) && (time() - (int) filemtime($path)) > $ttl) {
                 @unlink($path);

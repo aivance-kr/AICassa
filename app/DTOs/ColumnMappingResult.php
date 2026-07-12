@@ -11,9 +11,9 @@ namespace App\DTOs;
 final readonly class ColumnMappingResult
 {
     /**
-     * @param list<string>              $headers     소스 헤더 셀(index 정렬)
-     * @param list<list<string>>        $samples     앞부분 데이터 행(각 행은 헤더 index 정렬 셀 배열)
-     * @param array<int, string|null>   $assignments 소스컬럼 index → 표준 필드 키(제안), 미매핑은 null
+     * @param list<string>            $headers     소스 헤더 셀(index 정렬)
+     * @param list<list<string>>      $samples     앞부분 데이터 행(각 행은 헤더 index 정렬 셀 배열)
+     * @param array<int, string|null> $assignments 소스컬럼 index → 표준 필드 키(제안), 미매핑은 null
      */
     public function __construct(
         public array $headers,

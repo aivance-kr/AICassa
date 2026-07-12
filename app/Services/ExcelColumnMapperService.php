@@ -18,7 +18,9 @@ use Throwable;
  */
 final class ExcelColumnMapperService
 {
-    /** 미리보기에 보여줄 샘플 데이터 행 수. */
+    /**
+     * 미리보기에 보여줄 샘플 데이터 행 수.
+     */
     private const SAMPLE_ROWS = 3;
 
     /**
@@ -27,13 +29,13 @@ final class ExcelColumnMapperService
      * @var array<string, array{label:string, required:bool}>
      */
     private const FIELDS = [
-        'date'        => ['label' => '날짜(거래일자)',   'required' => true],
-        'type'        => ['label' => '구분(수입/비용)',  'required' => true],
-        'account'     => ['label' => '계정과목',         'required' => false],
-        'description' => ['label' => '거래내용(적요)',   'required' => true],
-        'partner'     => ['label' => '거래처(상호)',     'required' => false],
-        'amount'      => ['label' => '금액(공급가액)',   'required' => true],
-        'evidence'    => ['label' => '비고(증빙유형)',   'required' => false],
+        'date'        => ['label' => '날짜(거래일자)', 'required' => true],
+        'type'        => ['label' => '구분(수입/비용)', 'required' => true],
+        'account'     => ['label' => '계정과목', 'required' => false],
+        'description' => ['label' => '거래내용(적요)', 'required' => true],
+        'partner'     => ['label' => '거래처(상호)', 'required' => false],
+        'amount'      => ['label' => '금액(공급가액)', 'required' => true],
+        'evidence'    => ['label' => '비고(증빙유형)', 'required' => false],
     ];
 
     /**
@@ -119,6 +121,7 @@ final class ExcelColumnMapperService
     {
         // 1) 유효한 (열index → 표준필드키)만 추린다(재표시용, 중복 포함).
         $assignments = [];
+
         foreach ($posted as $idx => $field) {
             if (ctype_digit((string) $idx) && is_string($field) && isset(self::FIELDS[$field])) {
                 $assignments[(int) $idx] = $field;
@@ -127,6 +130,7 @@ final class ExcelColumnMapperService
 
         // 2) field → 열index 로 뒤집으며 중복 지정을 검출한다.
         $mapping = [];
+
         foreach ($assignments as $idx => $field) {
             if (isset($mapping[$field])) {
                 return [
@@ -246,6 +250,7 @@ final class ExcelColumnMapperService
         $json   = $this->parseJson($answer);
 
         $map = [];
+
         foreach ($json as $key => $value) {
             if (! ctype_digit((string) $key) || ! is_string($value)) {
                 continue;
@@ -267,12 +272,14 @@ final class ExcelColumnMapperService
     private function buildPrompt(array $headers): string
     {
         $lines = [];
+
         foreach ($headers as $i => $header) {
             $lines[] = "{$i}: " . str_replace(["\r", "\n"], ' ', $header);
         }
         $headerList = implode("\n", $lines);
 
         $fieldList = [];
+
         foreach (self::FIELDS as $key => $meta) {
             $fieldList[] = "{$key} = {$meta['label']}";
         }
