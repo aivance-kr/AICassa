@@ -1,4 +1,4 @@
-# CodeIgniter 4 Application Starter
+# 간편장부 웹ERP - 2026
 
 ---
 
