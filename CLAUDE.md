@@ -65,12 +65,18 @@ php spark serve               # 개발 서버
 php spark migrate             # DB 마이그레이션
 php spark swagger:generate    # OpenAPI 스펙 생성 (public/swagger.json)
 php spark routes              # 라우트 목록
-composer test                 # PHPUnit 단독 실행
+composer test                 # PHPUnit 전체 실행(커버리지 포함) — CI 패리티
+composer test:fast            # PHPUnit 전체(커버리지 제외) — 커밋 전 빠른 확인
+composer test:unit            # DB 불필요 유닛 스위트만(~0.3초) — 개발 중 즉시 피드백
 composer analyse              # PHPStan 단독 실행
 composer cs                   # PHP CS Fixer 검사(dry-run) — CI와 동일
 composer cs-fix               # PHP CS Fixer 자동 수정
 composer check                # CS Fixer → PHPStan → PHPUnit 순차 (CI 게이트와 동일, 푸시 전 권장)
+composer check:fast           # CS → PHPStan → 유닛만 — 빠른 로컬 게이트(feature 제외)
+composer hooks:install        # Git 훅(pre-commit cs-fix · pre-push check) 활성화 — 클론당 최초 1회
 ```
+
+> **Git 훅으로 CI 왕복 예방** — `composer hooks:install` 로 `.githooks/` 를 활성화하면 커밋 시 CS 자동수정(`pre-commit`), push 시 `composer check`(`pre-push`)가 자동 실행돼 red 상태 push 를 차단한다. 상세는 [`.githooks/README.md`](.githooks/README.md). 긴급 우회는 `SKIP_HOOKS=1`.
 
 ### 로컬 검증은 WSL 클론에서 실행 (CI 왕복 예방)
 Windows 체크아웃(`E:\claude_works\AICassa`)에는 **PHP·Composer가 없다**. 따라서 `composer check` 등 코드 검증은 **별도 WSL 클론**에서 실행한다. 이 단계를 건너뛰면 CS/PHPStan/PHPUnit 실패를 CI에서야 발견해 커밋 왕복이 생긴다.

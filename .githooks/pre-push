@@ -1,0 +1,22 @@
+#!/bin/sh
+# pre-push: push 전에 CI 게이트(CS · PHPStan · PHPUnit)를 로컬에서 그대로 실행한다.
+# red 상태 push → CI 실패 → 재커밋 왕복을 구조적으로 차단한다.
+# 긴급 시 우회: SKIP_HOOKS=1 git push ...
+
+[ -n "$SKIP_HOOKS" ] && { echo "⏭  pre-push: SKIP_HOOKS 설정됨 — 검증 건너뜀"; exit 0; }
+
+if ! command -v composer >/dev/null 2>&1; then
+    echo "⚠ pre-push: composer 없음 — 로컬 검증 건너뜀(CI 가 검증). WSL/PHP 환경에서 실행 권장."
+    exit 0
+fi
+
+echo "▶ pre-push: composer check (CS · PHPStan · PHPUnit) — CI 게이트와 동일…"
+if ! composer check; then
+    echo ""
+    echo "✖ pre-push: 검증 실패 — push 중단. 위 오류를 고친 뒤 다시 push 하세요."
+    echo "  (포맷만 문제면: composer cs-fix)"
+    echo "  (정말 우회해야 하면: SKIP_HOOKS=1 git push ...)"
+    exit 1
+fi
+echo "✔ pre-push: 검증 통과 — push 진행"
+exit 0

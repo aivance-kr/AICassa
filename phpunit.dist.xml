@@ -21,8 +21,20 @@
     </coverage>
 
     <testsuites>
-        <testsuite name="App">
-            <directory>./tests</directory>
+        <!-- 순수 유닛: 외부 의존성·DB 불필요 → 개발 중 즉시 실행(composer test:unit, ~0.3초).
+             서비스 내부에서 DB(db_tax_parameters)를 조회하는 두 테스트는 feature 스위트로 편입한다. -->
+        <testsuite name="unit">
+            <directory>./tests/unit</directory>
+            <exclude>./tests/unit/DepreciationServiceTest.php</exclude>
+            <exclude>./tests/unit/VatCalculatorServiceTest.php</exclude>
+        </testsuite>
+        <!-- 통합: DB·마이그레이션·HTTP 흐름 등. DB 의존 유닛 테스트 2개를 명시적으로 포함한다. -->
+        <testsuite name="feature">
+            <directory>./tests/feature</directory>
+            <directory>./tests/database</directory>
+            <directory>./tests/session</directory>
+            <file>./tests/unit/DepreciationServiceTest.php</file>
+            <file>./tests/unit/VatCalculatorServiceTest.php</file>
         </testsuite>
     </testsuites>
 
