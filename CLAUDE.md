@@ -4,35 +4,21 @@
 
 **간편장부 웹 ERP** — 국세청 간편장부 제도를 기반으로 한 다중 사용자(SaaS) 웹 ERP. CodeIgniter 4 기반 Admin + REST API 단일 프로젝트.
 
+> **공통 규칙은 전역 [`~/.claude/CLAUDE.md`](~/.claude/CLAUDE.md) 에서 자동 상속**된다(언어·Git 워크플로우·보안·코드 스타일·테스트·API·LSP). 이 문서는 **AICassa 저장소 전용** 규칙만 정의한다.
+
 > 도메인 분석·설계·계산식 명세는 `docs/` 참조:
 > - `docs/간편장부_웹ERP_분석설계.md` — 데이터 모델·아키텍처·로드맵
 > - `docs/간편장부_계산식명세.md` — 부가세·감가상각·소득금액 계산 규칙(VBA 역설계)
 > - `docs/신고서식_대조_검증.md` — 공식 서식 필드 대조·계산 검증·갭(세무사 검토 대상)
 
----
-
 ## 상세 규칙 (`.claude/rules/`)
-주제별 상세 규칙은 아래 파일로 분리되어 있으며, 아래 import 로 함께 로드된다.
+AICassa 고유 규칙은 아래 파일로 분리되어 있으며 `@import` 로 함께 로드된다.
 
-- [`code-style.md`](.claude/rules/code-style.md) — 코딩 규칙·네이밍·PHP 모던 스타일·금지 패턴
-- [`security.md`](.claude/rules/security.md) — 입력/출력 처리·보안 절대 금지
-- [`architecture.md`](.claude/rules/architecture.md) — 아키텍처 패턴·API 규약·레이어 책임·성능/DB·정적 분석
-- [`testing.md`](.claude/rules/testing.md) — 테스트 작성·실행 규칙
-- [`git-workflow.md`](.claude/rules/git-workflow.md) — 브랜치 전략·CI/CD·커밋 규칙
+- [`architecture.md`](.claude/rules/architecture.md) — JWT 인증 흐름·Admin 뷰 렌더링·데이터 접근
 - [`frontend.md`](.claude/rules/frontend.md) — 프론트엔드 라이브러리(AG Grid·Chart.js·Tiptap·PhpSpreadsheet)
 
-@.claude/rules/code-style.md
-@.claude/rules/security.md
 @.claude/rules/architecture.md
-@.claude/rules/testing.md
-@.claude/rules/git-workflow.md
 @.claude/rules/frontend.md
-
----
-
-## 언어 규칙
-- 모든 응답은 반드시 **한국어**로 작성한다.
-- 코드 주석도 한국어로 작성한다.
 
 ---
 
@@ -42,6 +28,7 @@
 - **인증**: 세션(Admin) / JWT Bearer(API) — JWT는 외부 라이브러리 없이 `JwtLibrary`(HMAC-SHA256)로 직접 구현
 - **API 문서**: Swagger UI (`/api/docs`) — `zircote/swagger-php`
 - **엑셀**: PhpSpreadsheet (간편장부 특성상 엑셀 입출력이 핵심)
+- **정적 분석**: PHPStan 레벨 6 (`app/`, Views 제외)
 
 ---
 
@@ -112,4 +99,4 @@ composer check      # CS Fixer → PHPStan(L6) → PHPUnit, CI 게이트와 동�
 | `app/Services/` | 유스케이스 단위 비즈니스 로직 (부가세·감가상각·집계 등) |
 | `app/Commands/` | Spark 커스텀 커맨드 |
 | `docs/` | 프로젝트 문서 |
-| `.claude/rules/` | 주제별 상세 규칙 (위 [상세 규칙](#상세-규칙-clauderules) 참조) |
+| `.claude/rules/` | 저장소 전용 상세 규칙 (위 [상세 규칙](#상세-규칙-clauderules) 참조) |
