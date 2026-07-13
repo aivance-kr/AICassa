@@ -89,6 +89,27 @@ Anthropic Claude 연동 인프라(`app/Libraries/AnthropicClient.php` · `env('A
 `.env`에 `ANTHROPIC_API_KEY`(및 선택 `ANTHROPIC_MODEL`, 기본 `claude-sonnet-5`)를 설정하면 AI 경로가 활성화된다.
 미설정 시에도 각 기능은 비-AI 경로로 동작하므로, AI 키 없이 개발·테스트가 가능하다.
 
+### 레이트 리밋 (유료 LLM 호출 보호)
+
+유료 외부 LLM 호출을 유발하는 AI 엔드포인트에 **로그인 사용자 단위** 레이트 리밋을 건다(`AiRateLimitFilter`).
+다중 테넌트에서 한 계정이 외부 API 비용·지연을 무제한 유발하는 것을 막는다.
+
+- **정책**: 사용자당 `seconds` 창에서 `capacity` 회까지 허용. 초과 시 POST(AJAX 어시스트)는 **HTTP 429**(에러 코드 `RATE_LIMITED`, CSRF 토큰 동봉), GET(자연어 검색)은 플래시 에러와 함께 이전 페이지로 리다이렉트한다.
+- **폴백 비차단**: `ANTHROPIC_API_KEY` 미설정 시 대상 엔드포인트는 외부 호출 없이 이력·규칙·검색 폴백만 하므로 레이트 리밋을 적용하지 않는다.
+- **설정(`.env`, 무배포 조정)**: `ai.rateLimit.enabled`(기본 `true`) · `ai.rateLimit.capacity`(기본 `20`) · `ai.rateLimit.seconds`(기본 `60`) → 기본 분당 20회.
+
+| 엔드포인트 | 메서드 |
+|---|---|
+| `admin/tax-qa/ask` | POST |
+| `admin/businesses/{id}/assets/advise` | POST |
+| `admin/businesses/{id}/ledger/receipts/recognize` | POST |
+| `admin/businesses/{id}/ledger/classify-account` | POST |
+| `admin/businesses/{id}/ledger/import` | POST |
+| `admin/businesses/{id}/reports/anomalies` | POST |
+| `admin/businesses/{id}/ledger/search` | GET |
+
+> **월간 비용 상한**은 영속 카운터(DB)가 필요해 이 단계에서는 제외했다. 현재는 레이트 리밋으로 순간 폭주·남용을 차단하며, 장기 예산 상한은 후속 과제로 둔다.
+
 ---
 
 ## 배포 (Deployment)

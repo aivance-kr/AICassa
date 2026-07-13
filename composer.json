@@ -45,6 +45,8 @@
     },
     "scripts": {
         "test": "phpunit",
+        "test:fast": "phpunit --no-coverage",
+        "test:unit": "phpunit --testsuite unit --no-coverage",
         "analyse": "phpstan analyse --memory-limit=512M",
         "cs": "PHP_CS_FIXER_IGNORE_ENV=1 php-cs-fixer fix --dry-run --diff",
         "cs-fix": "PHP_CS_FIXER_IGNORE_ENV=1 php-cs-fixer fix",
@@ -52,6 +54,18 @@
             "@cs",
             "@analyse",
             "@test"
-        ]
+        ],
+        "check:fast": [
+            "@cs",
+            "@analyse",
+            "@test:unit"
+        ],
+        "hooks:install": "git config core.hooksPath .githooks && chmod +x .githooks/pre-commit .githooks/pre-push"
+    },
+    "scripts-descriptions": {
+        "test:fast": "PHPUnit 전체(커버리지 제외) — 커밋 전 빠른 확인",
+        "test:unit": "DB 불필요 유닛 스위트만 (~0.3초) — 개발 중 즉시 피드백",
+        "check:fast": "CS · PHPStan · 유닛 테스트 — 빠른 로컬 게이트(feature 테스트 제외)",
+        "hooks:install": "Git 훅(pre-commit cs-fix · pre-push composer check) 활성화 — 최초 1회"
     }
 }

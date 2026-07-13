@@ -211,7 +211,8 @@ class Services extends BaseService
             return static::getSharedInstance('receiptOcrService');
         }
 
-        return new ReceiptOcrService();
+        // AI 클라이언트는 env 기반 주입(키 없으면 null → 판독 시 "설정 미완료" 안내로 폴백).
+        return new ReceiptOcrService(ai: AnthropicClient::fromEnv());
     }
 
     /**
