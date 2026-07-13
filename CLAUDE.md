@@ -78,19 +78,19 @@ composer hooks:install        # Git 훅(pre-commit cs-fix · pre-push check) 활
 
 > **Git 훅으로 CI 왕복 예방** — `composer hooks:install` 로 `.githooks/` 를 활성화하면 커밋 시 CS 자동수정(`pre-commit`), push 시 `composer check`(`pre-push`)가 자동 실행돼 red 상태 push 를 차단한다. 상세는 [`.githooks/README.md`](.githooks/README.md). 긴급 우회는 `SKIP_HOOKS=1`.
 
-### 로컬 검증은 WSL 클론에서 실행 (CI 왕복 예방)
-Windows 체크아웃(`E:\claude_works\AICassa`)에는 **PHP·Composer가 없다**. 따라서 `composer check` 등 코드 검증은 **별도 WSL 클론**에서 실행한다. 이 단계를 건너뛰면 CS/PHPStan/PHPUnit 실패를 CI에서야 발견해 커밋 왕복이 생긴다.
+### 로컬 검증 선행 (CI 왕복 예방)
+`composer check`(CS·PHPStan·PHPUnit)를 **PHP·Composer 가 있는 환경에서 push 전에 반드시 로컬 실행**한다. 이 단계를 건너뛰면 CS/PHPStan/PHPUnit 실패를 CI에서야 발견해 커밋 왕복이 생긴다. `.githooks/pre-push` 를 활성화하면(`composer hooks:install`) 자동으로 강제된다.
 
-- **WSL 클론 경로**: `~/claude-works/AICassa` (Ubuntu-24.04) — Windows 체크아웃과 **별개의 클론**이다. 기본 CLI `php`=8.5(확장 완비), dev 의존성이 `ext-sqlite3` 요구.
-- **실행 방식**: `wsl.exe -d Ubuntu-24.04 -- bash -lc 'cd ~/claude-works/AICassa && <명령>'`. 중첩 따옴표·`$()`·리다이렉트는 인터롭에서 깨지므로, 복잡하면 스크래치패드에 `.sh`를 쓰고 `/mnt/c/...` 경로로 실행한다.
-- **두 클론 동기화**: 별개 클론이므로 Windows에서 커밋·푸시한 뒤 WSL에서 `git fetch origin && git checkout <branch> && git pull` 로 맞춘 다음 검증한다.
-
-푸시(또는 PR 리뷰 요청) 전 권장 순서 — WSL 클론에서:
+푸시(또는 PR 리뷰 요청) 전 권장 순서:
 ```bash
-composer cs-fix     # 포맷 자동수정(정렬·빈줄·import·docblock) — CS 왕복을 근본 예방
+composer cs-fix     # 포맷 자동수정 — pre-commit 훅이 있으면 커밋 시 자동 수행
 composer check      # CS Fixer → PHPStan(L6) → PHPUnit, CI 게이트와 동일
 ```
-`cs-fix`가 수정한 파일은 커밋에 반드시 포함한다(WSL에서 커밋·푸시하거나 변경을 Windows로 되가져온다). 마이그레이션이 필요한 검증은 `php spark migrate --all` 사용(그냥 `migrate`는 Shield `users` 테이블 누락으로 FK 실패).
+개발 중 빠른 피드백은 `composer test:unit`(DB 불필요, ~0.3초), 커밋 전 전체 확인은 `composer test:fast`(커버리지 제외). 마이그레이션이 필요한 검증은 `php spark migrate --all` 사용(그냥 `migrate`는 Shield `users` 테이블 누락으로 FK 실패).
+
+> **PHP 가 없는 Windows 체크아웃(`E:\claude_works\AICassa`)이라면** 코드 검증을 **별도 WSL 클론**(`~/claude-works/AICassa`, Ubuntu-24.04 — Windows 체크아웃과 별개 클론, `php`=8.5·확장 완비, dev 의존성이 `ext-sqlite3` 요구)에서 수행한다.
+> - **실행**: `wsl.exe -d Ubuntu-24.04 -- bash -lc 'cd ~/claude-works/AICassa && <명령>'`. 중첩 따옴표·`$()`·리다이렉트는 인터롭에서 깨지므로, 복잡하면 스크래치패드에 `.sh`를 쓰고 `/mnt/c/...` 경로로 실행한다.
+> - **동기화**: 별개 클론이므로 Windows에서 커밋·푸시한 뒤 WSL에서 `git fetch origin && git checkout <branch> && git pull` 로 맞춘 다음 검증한다. `cs-fix`가 수정한 파일은 커밋에 반드시 포함한다.
 
 ---
 
