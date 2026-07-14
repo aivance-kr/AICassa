@@ -112,6 +112,16 @@ Anthropic Claude 연동 인프라(`app/Libraries/AnthropicClient.php` · `env('A
 
 ---
 
+## 개발 (Development)
+
+로컬 검증을 push 전에 끝내 CI 왕복을 없애는 방법(Git 훅·테스트 스위트·빠른 검증 스크립트)은
+[개발 속도 개선 가이드](docs/개발_속도_개선_가이드.md)를 참고한다.
+
+- 클론당 최초 1회: `composer install && composer hooks:install`
+- 개발 중 즉시 피드백: `composer test:unit` · push 전 CI 패리티: `composer check`
+
+---
+
 ## 배포 (Deployment)
 
 `dev` → `main` PR을 머지하면 CD(`.github/workflows/deploy.yml`)가 운영 서버에 SSH 배포한다.
