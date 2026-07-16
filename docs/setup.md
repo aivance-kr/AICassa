@@ -157,6 +157,7 @@ CD 가 동작하려면 저장소 **Settings → Secrets and variables → Action
 | `DEPLOY_SSH_KEY` | 접속용 개인키 |
 | `DEPLOY_PORT` | SSH 포트 |
 | `DEPLOY_PATH` | 서버 내 배포 경로(`.env`·소스 위치) |
+| `SLACK_WEBHOOK_URL` | 배포 성공/실패 Slack 알림용 Incoming Webhook URL (Slack App 관리 → Incoming Webhooks → 채널 선택 → URL 발급) |
 
 > **현 상태 주의**: 실운영 서버가 아직 없어 CD 워크플로우는 수동 비활성화되어 있다. 서버 구축·Secrets 등록 후 활성화한다.
 
