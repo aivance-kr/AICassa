@@ -4,12 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>로그인 — AICassa 간편장부</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="alternate icon" href="/favicon.ico">
     <style>
         :root { --primary:#2563EB; --primary-dark:#1D4ED8; --border:#e2e8f0; --muted:#64748b; }
         * { box-sizing: border-box; }
         body { margin:0; font-family:-apple-system,'Malgun Gothic',sans-serif; color:#1e293b; background:#f8fafc; }
         header { background:var(--primary); color:#fff; padding:14px 24px; }
-        header .brand { font-weight:700; font-size:18px; }
+        header .brand { font-weight:700; font-size:18px; display:flex; align-items:center; gap:8px; }
+        header .brand img { width:22px; height:22px; border-radius:5px; }
         .wrap { max-width:420px; margin:64px auto; padding:0 20px; }
         .card { background:#fff; border:1px solid var(--border); border-radius:12px; padding:32px; box-shadow:0 1px 3px rgba(0,0,0,.06); }
         .card h1 { font-size:20px; margin:0 0 4px; }
@@ -28,7 +31,7 @@
 </head>
 <body>
     <header>
-        <div class="brand">📗 AICassa 간편장부</div>
+        <div class="brand"><img src="/assets/brand/icon.svg" alt=""> AICassa 간편장부</div>
     </header>
 
     <div class="wrap">
