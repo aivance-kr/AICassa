@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 236 64" role="img" aria-labelledby="aicassaLogoTitle">
+  <title id="aicassaLogoTitle">AICassa 간편장부</title>
+  <rect width="64" height="64" rx="14" fill="#0D9488"/>
+  <rect x="16" y="20" width="32" height="5" rx="2.5" fill="#fff"/>
+  <rect x="16" y="30" width="32" height="5" rx="2.5" fill="#fff"/>
+  <rect x="16" y="40" width="20" height="5" rx="2.5" fill="#fff" opacity=".85"/>
+  <circle cx="47" cy="47" r="11" fill="#F59E0B"/>
+  <path d="M42 47.5l3.2 3.2 6.5-6.7" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <text x="78" y="34" font-family="'Malgun Gothic',-apple-system,'Segoe UI',sans-serif" font-size="25" font-weight="700" fill="#0D9488">AICassa</text>
+  <text x="79" y="50" font-family="'Malgun Gothic',-apple-system,'Segoe UI',sans-serif" font-size="13" font-weight="500" fill="#64748b">간편장부</text>
+</svg>

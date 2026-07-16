@@ -4,12 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= esc($title ?? 'AICassa 간편장부') ?></title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="alternate icon" href="/favicon.ico">
     <style>
         :root { --primary:#2563EB; --primary-dark:#1D4ED8; --secondary:#3B82F6; --border:#e2e8f0; --muted:#64748b; }
         * { box-sizing: border-box; }
         body { margin:0; font-family:-apple-system,'Malgun Gothic',sans-serif; color:#1e293b; background:#f8fafc; }
         header { background:var(--primary); color:#fff; padding:12px 24px; display:flex; align-items:center; justify-content:space-between; }
-        header .brand { font-weight:700; font-size:18px; color:#fff; text-decoration:none; }
+        header .brand { font-weight:700; font-size:18px; color:#fff; text-decoration:none; display:flex; align-items:center; gap:8px; }
+        header .brand img { width:22px; height:22px; border-radius:5px; }
         header nav a { color:#dbeafe; text-decoration:none; margin-left:16px; font-size:14px; }
         header nav a:hover { color:#fff; }
         header .user { font-size:13px; color:#dbeafe; }
@@ -48,7 +51,7 @@
 </head>
 <body>
     <header>
-        <a href="/admin/businesses" class="brand">📗 AICassa 간편장부</a>
+        <a href="/admin/businesses" class="brand"><img src="/assets/brand/icon.svg" alt=""> AICassa 간편장부</a>
         <nav>
             <a href="/admin/businesses">사업장 목록</a>
             <a href="/admin/tax-qa">세무 Q&A</a>
