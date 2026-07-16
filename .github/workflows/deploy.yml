@@ -17,6 +17,7 @@ jobs:
 
     steps:
       - name: Deploy over SSH
+        id: deploy
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.DEPLOY_HOST }}
@@ -57,3 +58,50 @@ jobs:
             sudo -n systemctl reload apache2
 
             echo "✔ 배포 완료"
+
+      - name: Slack 배포 알림
+        if: always()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          DEPLOY_OUTCOME: ${{ steps.deploy.outcome }}
+          COMMIT_URL: ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          ACTOR: ${{ github.actor }}
+          SHORT_SHA: ${{ github.sha }}
+        run: |
+          if [ -z "$SLACK_WEBHOOK_URL" ]; then
+            echo "⚠ SLACK_WEBHOOK_URL 미설정 — 알림 건너뜀"
+            exit 0
+          fi
+
+          if [ "$DEPLOY_OUTCOME" = "success" ]; then
+            STATUS_TEXT="✅ 배포 성공"
+            COLOR="#2eb886"
+          else
+            STATUS_TEXT="❌ 배포 실패"
+            COLOR="#e01e5a"
+          fi
+
+          PAYLOAD="$(jq -n \
+            --arg status "$STATUS_TEXT" \
+            --arg color "$COLOR" \
+            --arg commit_url "$COMMIT_URL" \
+            --arg sha "${SHORT_SHA:0:7}" \
+            --arg actor "$ACTOR" \
+            --arg run_url "$RUN_URL" \
+            '{
+              attachments: [{
+                color: $color,
+                blocks: [{
+                  type: "section",
+                  text: {
+                    type: "mrkdwn",
+                    text: ("*" + $status + "* — AICassa\n*커밋:* <" + $commit_url + "|" + $sha + ">\n*실행자:* " + $actor + "\n*Run:* <" + $run_url + "|바로가기>")
+                  }
+                }]
+              }]
+            }')"
+
+          curl -sS -X POST -H 'Content-type: application/json' \
+            --data "$PAYLOAD" \
+            "$SLACK_WEBHOOK_URL" || echo "⚠ Slack 알림 전송 실패(배포 결과에는 영향 없음)"
