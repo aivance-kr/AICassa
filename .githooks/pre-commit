@@ -17,7 +17,7 @@ fi
 
 echo "▶ pre-commit: 스테이징된 PHP 파일 CS 자동수정…"
 # 대상 파일만 포맷(--path-mode=intersection 로 .php-cs-fixer 규칙 ∩ 지정 파일)
-echo "$FILES" | PHP_CS_FIXER_IGNORE_ENV=1 xargs "$FIXER" fix --path-mode=intersection --quiet
+echo "$FILES" | PHP_CS_FIXER_IGNORE_ENV=1 xargs "$FIXER" fix --config=.php-cs-fixer.dist.php --path-mode=intersection --quiet
 STATUS=$?
 if [ "$STATUS" -ne 0 ] && [ "$STATUS" -ne 8 ]; then
     # 0=변경없음, 8=일부 파일 수정됨(정상). 그 외는 실제 오류.

@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= esc($title ?? 'AICassa 운영자') ?></title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="alternate icon" href="/favicon.ico">
     <style>
         :root { --primary:#7c3aed; --primary-dark:#6d28d9; --border:#e2e8f0; --muted:#64748b; }
         * { box-sizing: border-box; }
