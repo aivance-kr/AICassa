@@ -2,6 +2,7 @@
 
 namespace Config;
 
+use App\Filters\AiBudgetFilter;
 use App\Filters\AiRateLimitFilter;
 use App\Filters\OperatorAuthFilter;
 use CodeIgniter\Config\Filters as BaseFilters;
@@ -38,6 +39,7 @@ class Filters extends BaseFilters
         'performance'   => PerformanceMetrics::class,
         'operator'      => OperatorAuthFilter::class,
         'aiRateLimit'   => AiRateLimitFilter::class,
+        'aiBudget'      => AiBudgetFilter::class,
     ];
 
     /**

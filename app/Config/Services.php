@@ -6,6 +6,7 @@ use App\Libraries\AnthropicClient;
 use App\Libraries\SpreadsheetReader;
 use App\Models\TaxParameterModel;
 use App\Services\AccountClassifierService;
+use App\Services\AiUsageService;
 use App\Services\AnomalyDetectionService;
 use App\Services\AssetAdvisorService;
 use App\Services\AssetService;
@@ -287,5 +288,17 @@ class Services extends BaseService
 
         // AI 클라이언트는 env 기반 주입(키 없으면 null → 검색만 하고 "확인 불가" 응답).
         return new TaxQaService(ai: AnthropicClient::fromEnv());
+    }
+
+    /**
+     * 사용자 단위 월간 AI 사용량 집계·상한 판정 서비스.
+     */
+    public static function aiUsageService(bool $getShared = true): AiUsageService
+    {
+        if ($getShared) {
+            return static::getSharedInstance('aiUsageService');
+        }
+
+        return new AiUsageService();
     }
 }
