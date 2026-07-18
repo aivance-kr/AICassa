@@ -64,14 +64,29 @@ class AiUsageCounterModel extends Model
                 'created_at'    => $now,
                 'updated_at'    => $now,
             ]);
-        } catch (Throwable) {
-            // 동시에 다른 요청이 먼저 행을 만들었다면(유니크 제약 충돌) 그 행에 더한다.
-            $this->incrementExisting($userId, $periodYm, $calls, $inputTokens, $outputTokens, $now);
+        } catch (Throwable $e) {
+            // 대개는 동시에 다른 요청이 먼저 행을 만든 경우(유니크 제약 충돌)이므로 그 행에 더해 복구한다.
+            // 그 외 원인(DB 연결 끊김 등)일 수도 있으므로 원인은 남긴다.
+            log_message('error', 'AI 사용량 카운터 INSERT 실패, 증가 UPDATE 로 재시도: {msg}', ['msg' => $e->getMessage()]);
+
+            if (! $this->incrementExisting($userId, $periodYm, $calls, $inputTokens, $outputTokens, $now)) {
+                // 재시도 UPDATE 마저 행을 찾지 못했다면 유니크 제약 충돌이 아닌 다른 원인으로 INSERT 가
+                // 실패한 것이다 — 이번 호출분 사용량이 유실되므로 반드시 남긴다(운영 관측용).
+                log_message('error', 'AI 사용량 카운터 기록 유실: user_id={userId}, period_ym={periodYm}', [
+                    'userId'   => $userId,
+                    'periodYm' => $periodYm,
+                ]);
+            }
         }
     }
 
     /**
      * 이미 존재하는 행을 산술 증가로 갱신한다. 영향받은 행이 있었으면 true.
+     *
+     * DB 를 직접 갱신하는 부수효과가 있어 같은 인자로 다시 호출해도 결과가 달라질 수 있다
+     * (예: 사이에 행이 새로 생기면 이후 호출은 true 를 반환). PHPStan 순수함수 가정을 끈다.
+     *
+     * @phpstan-impure
      */
     private function incrementExisting(
         int $userId,
