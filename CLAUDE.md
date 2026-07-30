@@ -47,7 +47,7 @@ php spark migrate
 `.env` 필수 키:
 ```
 # 앱
-app.baseURL = http://localhost:8080/
+app.baseURL = http://localhost:8302/
 # DB
 database.default.hostname = localhost
 database.default.database = aicura
@@ -61,7 +61,7 @@ JWT_SECRET = your-secret-key-here
 
 ## 커맨드
 ```bash
-php spark serve               # 개발 서버
+php spark serve --port 8302   # 개발 서버
 php spark migrate             # DB 마이그레이션
 php spark swagger:generate    # OpenAPI 스펙 생성 (public/swagger.json)
 php spark routes              # 라우트 목록
