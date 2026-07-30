@@ -78,8 +78,25 @@ composer hooks:install        # Git 훅(pre-commit cs-fix · pre-push check) 활
 
 > **Git 훅으로 CI 왕복 예방** — `composer hooks:install` 로 `.githooks/` 를 활성화하면 커밋 시 CS 자동수정(`pre-commit`), push 시 `composer check`(`pre-push`)가 자동 실행돼 red 상태 push 를 차단한다. 상세는 [`.githooks/README.md`](.githooks/README.md). 긴급 우회는 `SKIP_HOOKS=1`.
 
-### 로컬 검증 선행 (CI 왕복 예방)
-`composer check`(CS·PHPStan·PHPUnit)를 **PHP·Composer 가 있는 환경에서 push 전에 반드시 로컬 실행**한다. 이 단계를 건너뛰면 CS/PHPStan/PHPUnit 실패를 CI에서야 발견해 커밋 왕복이 생긴다. `.githooks/pre-push` 를 활성화하면(`composer hooks:install`) 자동으로 강제된다.
+### 검증 게이트 — 어디서 무엇을 돌리는가
+검증은 로컬에서 끝낸다. `feature → dev` PR 에는 CI 를 걸지 않고, CI 는 `dev → main` 배포 PR 에서만 돈다.
+
+```
+feature/*  ──[로컬 검증: composer check]──▶  dev  ──[PR + CI]──▶  main
+                    ↑                          ↑
+              여기가 실질적 게이트          여기서만 CI 가 돈다
+```
+
+| 시점 | 무엇을 | 누가 |
+|---|---|---|
+| 개발 중 | `composer test:unit`(DB 불필요) | 사람 / Claude, 수시로 |
+| `dev` 푸시 전 | `composer check`(CS·PHPStan·PHPUnit) 전체 필수 — 실패하면 푸시하지 않는다 | 사람 / Claude 로컬 |
+| `feature → dev` PR | CI 없음, 코드 리뷰만 | — |
+| `dev → main` PR | GitHub Actions 전체(`ci.yml`) | CI |
+
+`.github/workflows/ci.yml` 의 트리거는 `main` 대상 `pull_request` 로만 한정된다(`branches: [main]`). `feature → dev` 에 CI 가 없다는 건 `dev` 브랜치가 검증받지 않은 코드를 받을 수 있다는 뜻이라, **로컬 검증이 유일한 방어선**이다 — 생략하면 여러 기능이 쌓인 뒤 배포 PR 에서야 CI 가 처음 돌아 어느 커밋이 깨뜨렸는지 찾는 비용이 커진다. Claude 가 작업할 때도 동일하다 — `dev` 로 올리는 PR 을 만들기 전에 `composer check` 를 실제로 실행하고 출력을 확인한 뒤 진행한다("통과할 것 같다"로 넘어가지 않는다).
+
+`composer check`(CS·PHPStan·PHPUnit)를 **PHP·Composer 가 있는 환경에서 push 전에 반드시 로컬 실행**한다. 이 단계를 건너뛰면 CS/PHPStan/PHPUnit 실패를 CI에서야 발견해 커밋 왕복이 생긴다. `.githooks/pre-push` 를 활성화하면(`composer hooks:install`) push 대상 브랜치와 무관하게 자동으로 강제된다(feature 브랜치 포함 — 이 저장소는 참고 정책과 달리 feature 푸시도 훅으로 게이트한다).
 
 푸시(또는 PR 리뷰 요청) 전 권장 순서:
 ```bash
