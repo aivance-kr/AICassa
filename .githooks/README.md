@@ -2,6 +2,8 @@
 
 CI 왕복(push → CI 실패 → 재커밋)을 로컬에서 미리 차단하는 공유 훅이다. `core.hooksPath` 로 활성화한다.
 
+> GitHub Actions CI(`ci.yml`)는 `dev → main` 배포 PR 에서만 돈다 — `feature → dev` PR 은 CI 가 없고 이 훅(특히 `pre-push`)이 실질적 게이트다. 자세한 검증 게이트 구조는 [`CLAUDE.md` › 검증 게이트](../CLAUDE.md#검증-게이트--어디서-무엇을-돌리는가) 참조.
+
 ## 활성화 (최초 1회, 클론마다)
 
 ```bash

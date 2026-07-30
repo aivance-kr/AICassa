@@ -145,6 +145,32 @@ final class AnthropicClient
             throw new RuntimeException('AI 응답 형식이 올바르지 않습니다.');
         }
 
+        $this->recordUsage(
+            (int) ($body['usage']['input_tokens'] ?? 0),
+            (int) ($body['usage']['output_tokens'] ?? 0),
+        );
+
         return $text;
+    }
+
+    /**
+     * 실제 외부 호출 1건분 사용량을 월간 예산 집계 서비스에 넘긴다.
+     *
+     * 로그인 사용자가 없으면(비정상 흐름·순수 단위 테스트 등) 기록할 대상이 없으므로 건너뛴다.
+     * 폴백(이력·규칙 등)은 이 메서드에 도달하지 않으므로 실제 호출만 카운트된다.
+     * 집계는 부가 기능이므로 실패해도 이미 받은 AI 응답(텍스트)을 막지 않는다(로깅 후 계속 진행).
+     */
+    private function recordUsage(int $inputTokens, int $outputTokens): void
+    {
+        try {
+            $userId = auth()->id();
+            if ($userId === null) {
+                return;
+            }
+
+            service('aiUsageService')->record((int) $userId, $inputTokens, $outputTokens);
+        } catch (Throwable $e) {
+            log_message('error', 'AI 사용량 기록 실패: {msg}', ['msg' => $e->getMessage()]);
+        }
     }
 }

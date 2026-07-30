@@ -1,10 +1,8 @@
 name: CI
 
 on:
-  push:
-    branches: [dev, main, 'feature/**']
   pull_request:
-    branches: [dev, main]
+    branches: [main]     # dev 로 가는 PR 에서는 돌지 않는다 — 검증은 로컬(pre-push 훅)에서 끝낸다
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -13,24 +11,28 @@ concurrency:
 jobs:
   backend:
     name: PHP CS Fixer · PHPStan · PHPUnit (MySQL)
-    runs-on: ubuntu-latest
-
-    services:
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: aicassa_test
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=10
+    # self-hosted(macOS) 러너는 services: 도커 컨테이너를 지원하지 않는다
+    # (GitHub Actions 서비스 컨테이너는 Linux 러너 전용). 대신 MySQL을
+    # docker run 으로 직접 띄우고 잡 종료 시 정리한다.
+    runs-on: [self-hosted, macOS, ARM64]
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: MySQL 컨테이너 기동
+        run: |
+          docker rm -f ci-mysql-${{ github.run_id }} 2>/dev/null || true
+          # 이 러너는 시스템 MySQL(mysqld)이 이미 3306을, AIFid CI 가 13306을
+          # 점유하고 있어 이 저장소 전용 포트(33306)로 띄운다.
+          docker run -d --name ci-mysql-${{ github.run_id }} \
+            -e MYSQL_ROOT_PASSWORD=root \
+            -e MYSQL_DATABASE=aicassa_test \
+            -p 33306:3306 \
+            mysql:8.0
+          for i in $(seq 1 30); do
+            docker exec ci-mysql-${{ github.run_id }} mysqladmin ping -proot --silent && break
+            sleep 2
+          done
 
       - name: Setup PHP 8.5
         uses: shivammathur/setup-php@v2
@@ -54,7 +56,7 @@ jobs:
       - name: Install dependencies
         run: composer install --no-progress --prefer-dist
 
-      - name: Prepare .env (테스트 DB → MySQL 서비스)
+      - name: Prepare .env (테스트 DB → MySQL 컨테이너)
         run: |
           cp env .env
           {
@@ -65,20 +67,11 @@ jobs:
             echo "database.tests.username = root"
             echo "database.tests.password = root"
             echo "database.tests.DBDriver = MySQLi"
-            echo "database.tests.port = 3306"
+            echo "database.tests.port = 33306"
           } >> .env
 
       - name: Prepare writable directories
         run: mkdir -p writable/cache writable/logs writable/session writable/uploads writable/debugbar build/logs
-
-      - name: Wait for MySQL
-        run: |
-          for i in $(seq 1 30); do
-            if mysqladmin ping -h 127.0.0.1 -uroot -proot --silent; then
-              echo "MySQL is up"; break
-            fi
-            echo "Waiting for MySQL..."; sleep 2
-          done
 
       - name: PHP CS Fixer (dry-run)
         run: composer cs
@@ -88,3 +81,7 @@ jobs:
 
       - name: PHPUnit (MySQL)
         run: composer test
+
+      - name: 컨테이너 정리
+        if: always()
+        run: docker rm -f ci-mysql-${{ github.run_id }} 2>/dev/null || true
