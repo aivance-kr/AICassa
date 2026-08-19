@@ -61,9 +61,14 @@ JWT_SECRET = your-secret-key-here
 
 ## 커맨드
 ```bash
-php spark serve --port 8302   # 개발 서버
+php spark serve --host 127.0.0.1 --port 8302   # 개발 서버 (cassa.test, Caddy 리버스 프록시 경유)
 php spark migrate             # DB 마이그레이션
 php spark swagger:generate    # OpenAPI 스펙 생성 (public/swagger.json)
+```
+
+> ⚠️ **`--host` 를 빼면 `cassa.test` 접속이 `502 Bad Gateway` 로 실패한다.** `--host` 없이 기본값 `localhost` 로 바인딩하면 이 macOS 환경에서는 IPv6(`::1`)로만 리슨되는데, `cassa.test` 를 프록시하는 공용 Caddy(`~/claude-works/dev-proxy/Caddyfile`)는 `127.0.0.1:8302`(IPv4)로 연결을 시도해 거부당한다. 반드시 `--host 127.0.0.1` 을 명시할 것.
+
+```bash
 php spark routes              # 라우트 목록
 composer test                 # PHPUnit 전체 실행(커버리지 포함) — CI 패리티
 composer test:fast            # PHPUnit 전체(커버리지 제외) — 커밋 전 빠른 확인
