@@ -5,6 +5,7 @@ namespace Config;
 use App\Filters\AiBudgetFilter;
 use App\Filters\AiRateLimitFilter;
 use App\Filters\OperatorAuthFilter;
+use App\Filters\OperatorLoginRateLimitFilter;
 use CodeIgniter\Config\Filters as BaseFilters;
 use CodeIgniter\Filters\Cors;
 use CodeIgniter\Filters\CSRF;
@@ -28,18 +29,19 @@ class Filters extends BaseFilters
      * or [filter_name => [classname1, classname2, ...]]
      */
     public array $aliases = [
-        'csrf'          => CSRF::class,
-        'toolbar'       => DebugToolbar::class,
-        'honeypot'      => Honeypot::class,
-        'invalidchars'  => InvalidChars::class,
-        'secureheaders' => SecureHeaders::class,
-        'cors'          => Cors::class,
-        'forcehttps'    => ForceHTTPS::class,
-        'pagecache'     => PageCache::class,
-        'performance'   => PerformanceMetrics::class,
-        'operator'      => OperatorAuthFilter::class,
-        'aiRateLimit'   => AiRateLimitFilter::class,
-        'aiBudget'      => AiBudgetFilter::class,
+        'csrf'                   => CSRF::class,
+        'toolbar'                => DebugToolbar::class,
+        'honeypot'               => Honeypot::class,
+        'invalidchars'           => InvalidChars::class,
+        'secureheaders'          => SecureHeaders::class,
+        'cors'                   => Cors::class,
+        'forcehttps'             => ForceHTTPS::class,
+        'pagecache'              => PageCache::class,
+        'performance'            => PerformanceMetrics::class,
+        'operator'               => OperatorAuthFilter::class,
+        'aiRateLimit'            => AiRateLimitFilter::class,
+        'aiBudget'               => AiBudgetFilter::class,
+        'operatorLoginRateLimit' => OperatorLoginRateLimitFilter::class,
     ];
 
     /**
@@ -85,7 +87,7 @@ class Filters extends BaseFilters
         ],
         'after' => [
             // 'honeypot',
-            // 'secureheaders',
+            'secureheaders',
         ],
     ];
 

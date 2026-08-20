@@ -21,6 +21,12 @@ use App\Models\PartnerModel;
  */
 final class LedgerImportService
 {
+    /**
+     * 한 번의 대량 임포트에서 허용할 AI 폴백 시도 수.
+     * 이력 기반 분류는 제한하지 않으며, 한 HTTP 요청이 외부 API 비용을 증폭시키는 것을 막는다.
+     */
+    private const MAX_AI_FALLBACKS_PER_IMPORT = 20;
+
     private LedgerService $ledger;
     private BusinessModel $businesses;
     private AccountModel $accounts;
@@ -123,9 +129,10 @@ final class LedgerImportService
         }
         $isManufacturing = (bool) $business['is_manufacturing'];
 
-        $imported = 0;
-        $skipped  = 0;
-        $errors   = [];
+        $imported           = 0;
+        $skipped            = 0;
+        $errors             = [];
+        $aiFallbackAttempts = 0;
 
         $db = db_connect();
         $db->transStart();
@@ -134,7 +141,7 @@ final class LedgerImportService
             $rowNum = $index + 1;
 
             try {
-                $data = $this->buildData($businessId, $raw, $isManufacturing);
+                $data = $this->buildData($businessId, $raw, $isManufacturing, $aiFallbackAttempts);
                 $this->ledger->create($userId, $businessId, $data);
                 $imported++;
             } catch (RowException $e) {
@@ -156,7 +163,7 @@ final class LedgerImportService
      *
      * @param array<string, string> $raw
      */
-    private function buildData(int $businessId, array $raw, bool $isManufacturing): LedgerData
+    private function buildData(int $businessId, array $raw, bool $isManufacturing, int &$aiFallbackAttempts): LedgerData
     {
         $date = $this->normalizeDate($raw['date']);
         if ($date === null) {
@@ -194,7 +201,18 @@ final class LedgerImportService
 
         // 계정과목 칸이 비었으면 자동분류로 draft 를 채운다(이력 우선, 없으면 AI). 확신할 때만.
         if ($accountId === null && $raw['description'] !== '') {
-            $suggestion = $this->classifier->suggest($businessId, $type, $raw['description'], $raw['partner'], $isManufacturing);
+            $allowAiFallback = $aiFallbackAttempts < self::MAX_AI_FALLBACKS_PER_IMPORT;
+            if ($allowAiFallback) {
+                $aiFallbackAttempts++;
+            }
+            $suggestion = $this->classifier->suggest(
+                $businessId,
+                $type,
+                $raw['description'],
+                $raw['partner'],
+                $isManufacturing,
+                $allowAiFallback,
+            );
             if ($suggestion->isConfident()) {
                 $accountId = $suggestion->accountId;
             }

@@ -22,12 +22,12 @@ class AiBudget extends BaseConfig
     /**
      * 월간 허용 호출 수(사용자 단위). 0 이면 무제한.
      */
-    public int $monthlyCallCap = 0;
+    public int $monthlyCallCap = 1000;
 
     /**
      * 월간 허용 토큰 수(입력+출력 합, 사용자 단위). 0 이면 무제한.
      */
-    public int $monthlyTokenCap = 0;
+    public int $monthlyTokenCap = 1_000_000;
 
     public function __construct()
     {

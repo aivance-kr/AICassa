@@ -46,7 +46,7 @@ $routes->group('admin', ['filter' => 'session'], static function ($routes): void
         $routes->post('(:num)/ledger/classify-account', 'Admin\AccountClassifierController::suggest/$1', ['filter' => ['aiRateLimit', 'aiBudget']]);
         $routes->get('(:num)/ledger/import', 'Admin\LedgerController::importForm/$1');
         $routes->post('(:num)/ledger/import', 'Admin\LedgerController::import/$1', ['filter' => ['aiRateLimit', 'aiBudget']]);
-        $routes->post('(:num)/ledger/import/confirm', 'Admin\LedgerController::importConfirm/$1');
+        $routes->post('(:num)/ledger/import/confirm', 'Admin\LedgerController::importConfirm/$1', ['filter' => ['aiRateLimit', 'aiBudget']]);
         $routes->get('(:num)/ledger/(:num)/edit', 'Admin\LedgerController::edit/$1/$2');
         $routes->post('(:num)/ledger/(:num)', 'Admin\LedgerController::update/$1/$2');
         $routes->post('(:num)/ledger/(:num)/delete', 'Admin\LedgerController::delete/$1/$2');
@@ -76,7 +76,7 @@ $routes->group('admin', ['filter' => 'session'], static function ($routes): void
 
 // Operator (.env 자격증명 인증) — 연도별 세법 파라미터 관리. 사업장 Admin 과 완전 분리.
 $routes->get('operator/login', 'Operator\AuthController::showLogin');
-$routes->post('operator/login', 'Operator\AuthController::login');
+$routes->post('operator/login', 'Operator\AuthController::login', ['filter' => 'operatorLoginRateLimit']);
 $routes->get('operator/logout', 'Operator\AuthController::logout');
 $routes->group('operator', ['filter' => 'operator'], static function ($routes): void {
     $routes->get('', 'Operator\TaxParameterController::index');
