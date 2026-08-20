@@ -8,6 +8,7 @@ use App\Enums\EntryType;
 use App\Enums\EvidenceType;
 use App\Exceptions\NotFoundException;
 use App\Exceptions\ValidationException;
+use App\Libraries\SpreadsheetReader;
 use App\Models\AccountModel;
 use App\Models\PartnerModel;
 use App\Services\ExcelColumnMapperService;
@@ -237,8 +238,9 @@ class LedgerController extends BaseAdminController
 
         $file = $this->request->getFile('csv');
         $ext  = $file !== null ? strtolower($file->getExtension()) : '';
-        if ($file === null || ! $file->isValid() || ! in_array($ext, ['csv', 'txt', 'xls', 'xlsx'], true)) {
-            return redirect()->back()->with('error', 'CSV 또는 엑셀(xls, xlsx) 파일을 선택하세요.');
+        if ($file === null || ! $file->isValid() || ! in_array($ext, ['csv', 'txt', 'xls', 'xlsx'], true)
+                           || $file->getSize() > SpreadsheetReader::MAX_FILE_BYTES) {
+            return redirect()->back()->with('error', '10MB 이하의 CSV 또는 엑셀(xls, xlsx) 파일을 선택하세요.');
         }
 
         $this->cleanupStaleImports();

@@ -125,6 +125,17 @@ final class AccountClassifierServiceTest extends CIUnitTestCase
     }
 
     /**
+     * 대량 임포트는 이력 추천은 유지하되 AI 폴백을 제한할 수 있어야 한다.
+     */
+    public function testCanDisableAiFallbackWithoutDisablingHistory(): void
+    {
+        $service    = $this->serviceWithAi('소모품비');
+        $suggestion = $service->suggest($this->businessId, EntryType::Expense, '처음 보는 거래', allowAiFallback: false);
+
+        $this->assertSame(ClassifierSource::None, $suggestion->source);
+    }
+
+    /**
      * AI 가 목록에 없는 계정과목을 뱉으면 채택하지 않는다(닫힌 어휘, AI 불신).
      */
     public function testAiFallbackRejectsUnknownVocabulary(): void
