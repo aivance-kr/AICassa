@@ -14,7 +14,7 @@
 ## 기술 스택
 - **언어**: PHP 8.4+ (타입 선언·match·enum·readonly 적극 사용)
 - **프레임워크**: CodeIgniter 4
-- **인증**: 세션(Admin) / JWT Bearer(API) — JWT는 외부 라이브러리 없이 `JwtLibrary`(HMAC-SHA256)로 직접 구현
+- **인증**: 세션(Admin) / JWT Bearer(API) — 기존 `JwtLibrary`(HMAC-SHA256) 구현을 사용
 - **API 문서**: Swagger UI (`/api/docs`) — `zircote/swagger-php`
 - **엑셀**: PhpSpreadsheet (간편장부 특성상 엑셀 입출력이 핵심)
 - **정적 분석**: PHPStan 레벨 6 (`app/`, Views 제외)
@@ -24,6 +24,8 @@
 ### JWT 인증
 
 `JwtAuthFilter`가 토큰 검증 후 `Auth::setUserId()`로 정적 홀더에 저장한다. API 컨트롤러는 `BaseApiController`의 `$this->authUserId()`만 사용한다.
+
+기존 `JwtLibrary`는 호환성 유지를 위해 그대로 사용한다. 새 JWT·서명·암호화 로직을 직접 구현하지 않으며, 인증 구조 변경이나 라이브러리 전환은 별도 설계·보안 검토로 진행한다. 기존 JWT 검증을 변경할 때는 허용 알고리즘, 서명, 만료 검증을 모두 유지한다.
 
 ```php
 Auth::setUserId((int) $payload['sub']); // JwtAuthFilter
@@ -40,10 +42,10 @@ $userId = $this->authUserId(); // BaseApiController 상속 컨트롤러
 
 ## 프론트엔드 라이브러리 규칙
 
-- 목록성 화면(장부·거래처 테이블 등)은 AG Grid Community를 사용한다. 기본 테마는 `ag-theme-alpine`이며, HTML 셀은 `cellRenderer`로 렌더링하고 `innerHTML`을 직접 조작하지 않는다.
+- 목록성 화면(장부·거래처 테이블 등)은 AG Grid Community를 사용한다. 기본 테마는 `ag-theme-alpine`이며, 서버사이드 페이지네이션은 `serverSideDatasource`를 사용한다. HTML 셀은 `cellRenderer`로 렌더링하고 `innerHTML`을 직접 조작하지 않는다.
 - 통계·영업현황표 차트는 Chart.js를 사용한다. 차트 데이터는 컨트롤러에서 `$labels`, `$values`로 분리해 전달하며, 민감 집계 데이터는 별도 API 엔드포인트를 검토한다.
-- 리치 에디터가 필요하면 Tiptap을 사용하고, 저장 시 `editor.getHTML()`을 hidden input에 동기화한다. 저장 내용을 출력할 때는 `esc($content, 'html')` 또는 허용 태그 화이트리스트 필터를 적용한다.
-- 엑셀은 PhpSpreadsheet를 사용한다. 1만 행 이상은 `ChunkReadFilter`로 청크 처리하고, 업로드 파일은 `writable/uploads/`에 저장한 뒤 처리 완료 즉시 삭제한다.
+- 리치 에디터가 필요하면 헤드리스 에디터인 Tiptap을 사용하고 ES module CDN으로 로드한다. 저장 시 `editor.getHTML()`을 hidden input에 동기화한다. 저장 내용을 출력할 때는 `esc($content, 'html')` 또는 허용 태그 화이트리스트 필터를 적용한다.
+- 엑셀은 PhpSpreadsheet를 사용한다. 기본 읽기는 `IOFactory::load($filePath)->getActiveSheet()->toArray()`를 사용한다. 1만 행 이상은 `ChunkReadFilter`로 청크 처리하고, 업로드 파일은 `writable/uploads/`에 저장한 뒤 처리 완료 즉시 삭제한다.
 
 ---
 

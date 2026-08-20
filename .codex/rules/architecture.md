@@ -6,6 +6,8 @@ Codex가 자동으로 적용하는 작업 지침은 저장소 루트의 [`AGENTS
 
 `JwtAuthFilter`가 토큰 검증 후 `Auth::setUserId()`로 정적 홀더에 저장한다. API 컨트롤러는 `BaseApiController`의 `$this->authUserId()`로 사용자 ID를 가져온다.
 
+기존 `JwtLibrary`는 호환성 유지를 위해 그대로 사용한다. 새 JWT·서명·암호화 로직을 직접 구현하지 않으며, 인증 구조 변경이나 라이브러리 전환은 별도 설계·보안 검토로 진행한다. 기존 JWT 검증을 변경할 때는 허용 알고리즘, 서명, 만료 검증을 모두 유지한다.
+
 ```php
 Auth::setUserId((int) $payload['sub']); // JwtAuthFilter
 $userId = $this->authUserId(); // BaseApiController 상속 컨트롤러
