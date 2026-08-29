@@ -1,34 +1,51 @@
-# CLAUDE.md
+# AGENTS.md
 
-이 파일은 Claude Code(claude.ai/code)가 이 저장소에서 작업할 때 참고하는 가이드다.
+이 파일은 Codex가 이 저장소에서 작업할 때 참고하는 가이드다.
 
 **간편장부 웹 ERP** — 국세청 간편장부 제도를 기반으로 한 다중 사용자(SaaS) 웹 ERP. CodeIgniter 4 기반 Admin + REST API 단일 프로젝트.
 
-> **공통 규칙은 전역 [`~/.claude/CLAUDE.md`](~/.claude/CLAUDE.md) 에서 자동 상속**된다(언어·Git 워크플로우·보안·코드 스타일·테스트·API·LSP). 이 문서는 **AICassa 저장소 전용** 규칙만 정의한다.
+> 공통 개발 규칙(언어·Git 워크플로우·보안·코드 스타일·테스트·API)은 상위 `AGENTS.md`에서 상속된다. 이 문서는 **AICassa 저장소 전용** 규칙만 정의한다.
 
 > 도메인 분석·설계·계산식 명세는 `docs/` 참조:
 > - `docs/간편장부_웹ERP_분석설계.md` — 데이터 모델·아키텍처·로드맵
 > - `docs/간편장부_계산식명세.md` — 부가세·감가상각·소득금액 계산 규칙(VBA 역설계)
 > - `docs/신고서식_대조_검증.md` — 공식 서식 필드 대조·계산 검증·갭(세무사 검토 대상)
 
-## 상세 규칙 (`.claude/rules/`)
-AICassa 고유 규칙은 아래 파일로 분리되어 있으며 `@import` 로 함께 로드된다.
-
-- [`architecture.md`](.claude/rules/architecture.md) — JWT 인증 흐름·Admin 뷰 렌더링·데이터 접근
-- [`frontend.md`](.claude/rules/frontend.md) — 프론트엔드 라이브러리(AG Grid·Chart.js·Tiptap·PhpSpreadsheet)
-
-@.claude/rules/architecture.md
-@.claude/rules/frontend.md
-
----
-
 ## 기술 스택
 - **언어**: PHP 8.4+ (타입 선언·match·enum·readonly 적극 사용)
 - **프레임워크**: CodeIgniter 4
-- **인증**: 세션(Admin) / JWT Bearer(API) — JWT는 외부 라이브러리 없이 `JwtLibrary`(HMAC-SHA256)로 직접 구현
+- **인증**: 세션(Admin) / JWT Bearer(API) — 기존 `JwtLibrary`(HMAC-SHA256) 구현을 사용
 - **API 문서**: Swagger UI (`/api/docs`) — `zircote/swagger-php`
 - **엑셀**: PhpSpreadsheet (간편장부 특성상 엑셀 입출력이 핵심)
 - **정적 분석**: PHPStan 레벨 6 (`app/`, Views 제외)
+
+## 프로젝트 아키텍처 규칙
+
+### JWT 인증
+
+`JwtAuthFilter`가 토큰 검증 후 `Auth::setUserId()`로 정적 홀더에 저장한다. API 컨트롤러는 `BaseApiController`의 `$this->authUserId()`만 사용한다.
+
+기존 `JwtLibrary`는 호환성 유지를 위해 그대로 사용한다. 새 JWT·서명·암호화 로직을 직접 구현하지 않으며, 인증 구조 변경이나 라이브러리 전환은 별도 설계·보안 검토로 진행한다. 기존 JWT 검증을 변경할 때는 허용 알고리즘, 서명, 만료 검증을 모두 유지한다.
+
+```php
+Auth::setUserId((int) $payload['sub']); // JwtAuthFilter
+$userId = $this->authUserId(); // BaseApiController 상속 컨트롤러
+```
+
+### Admin 뷰 렌더링
+
+`BaseAdminController::render()`가 세션의 `authUser` 등 공통 데이터를 병합한다. Admin 컨트롤러에서는 반드시 `$this->render()`를 사용하며 `view()`를 직접 반환하지 않는다.
+
+### 데이터 접근
+
+별도 Repository 레이어 없이 CI4 Model을 데이터 접근 계층으로 사용한다. 복잡한 쿼리는 Model 메서드로 캡슐화하고, `model(XxxModel::class)` 헬퍼로 가져온다. Model을 직접 `new` 하지 않으며 `$returnType`은 `'array'`로 통일한다.
+
+## 프론트엔드 라이브러리 규칙
+
+- 목록성 화면(장부·거래처 테이블 등)은 AG Grid Community를 사용한다. 기본 테마는 `ag-theme-alpine`이며, 서버사이드 페이지네이션은 `serverSideDatasource`를 사용한다. HTML 셀은 `cellRenderer`로 렌더링하고 `innerHTML`을 직접 조작하지 않는다.
+- 통계·영업현황표 차트는 Chart.js를 사용한다. 차트 데이터는 컨트롤러에서 `$labels`, `$values`로 분리해 전달하며, 민감 집계 데이터는 별도 API 엔드포인트를 검토한다.
+- 리치 에디터가 필요하면 헤드리스 에디터인 Tiptap을 사용하고 ES module CDN으로 로드한다. 저장 시 `editor.getHTML()`을 hidden input에 동기화한다. 저장 내용을 출력할 때는 `esc($content, 'html')` 또는 허용 태그 화이트리스트 필터를 적용한다.
+- 엑셀은 PhpSpreadsheet를 사용한다. 기본 읽기는 `IOFactory::load($filePath)->getActiveSheet()->toArray()`를 사용한다. 1만 행 이상은 `ChunkReadFilter`로 청크 처리하고, 업로드 파일은 `writable/uploads/`에 저장한 뒤 처리 완료 즉시 삭제한다.
 
 ---
 
@@ -36,7 +53,7 @@ AICassa 고유 규칙은 아래 파일로 분리되어 있으며 `@import` 로 �
 
 > **⚠️ Windows 환경이면 개발·테스트를 WSL 에서 수행한다.**
 > Windows 체크아웃(`E:\claude_works\AICassa`)에는 **PHP·Composer 가 없다** — 서버 구동·마이그레이션·`composer check`·PHPUnit 을 실행할 수 없다.
-> 코드 편집은 Windows/WSL 어디서든 가능하나 **실행·테스트·정적분석은 반드시 WSL 클론**(`~/claude-works/AICassa`, Ubuntu-24.04)에서 한다.
+> 코드 편집은 Windows/WSL 어디서든 가능하나 **실행·테스트·정적분석은 반드시 WSL 클론**(`~/Codex-works/AICassa`, Ubuntu-24.04)에서 한다.
 > 상세 절차·클론 동기화는 아래 [커맨드 › 로컬 검증은 WSL 클론에서 실행](#로컬-검증은-wsl-클론에서-실행-ci-왕복-예방) 참조.
 
 ```bash
@@ -66,7 +83,7 @@ php spark migrate             # DB 마이그레이션
 php spark swagger:generate    # OpenAPI 스펙 생성 (public/swagger.json)
 ```
 
-> ⚠️ **`--host` 를 빼면 `cassa.test` 접속이 `502 Bad Gateway` 로 실패한다.** `--host` 없이 기본값 `localhost` 로 바인딩하면 이 macOS 환경에서는 IPv6(`::1`)로만 리슨되는데, `cassa.test` 를 프록시하는 공용 Caddy(`~/claude-works/dev-proxy/Caddyfile`)는 `127.0.0.1:8302`(IPv4)로 연결을 시도해 거부당한다. 반드시 `--host 127.0.0.1` 을 명시할 것.
+> ⚠️ **`--host` 를 빼면 `cassa.test` 접속이 `502 Bad Gateway` 로 실패한다.** `--host` 없이 기본값 `localhost` 로 바인딩하면 이 macOS 환경에서는 IPv6(`::1`)로만 리슨되는데, `cassa.test` 를 프록시하는 공용 Caddy(`~/Codex-works/dev-proxy/Caddyfile`)는 `127.0.0.1:8302`(IPv4)로 연결을 시도해 거부당한다. 반드시 `--host 127.0.0.1` 을 명시할 것.
 
 ```bash
 php spark routes              # 라우트 목록
@@ -94,12 +111,12 @@ feature/*  ──[로컬 검증: composer check]──▶  dev  ──[PR + CI]�
 
 | 시점 | 무엇을 | 누가 |
 |---|---|---|
-| 개발 중 | `composer test:unit`(DB 불필요) | 사람 / Claude, 수시로 |
-| `dev` 푸시 전 | `composer check`(CS·PHPStan·PHPUnit) 전체 필수 — 실패하면 푸시하지 않는다 | 사람 / Claude 로컬 |
+| 개발 중 | `composer test:unit`(DB 불필요) | 사람 / Codex, 수시로 |
+| `dev` 푸시 전 | `composer check`(CS·PHPStan·PHPUnit) 전체 필수 — 실패하면 푸시하지 않는다 | 사람 / Codex 로컬 |
 | `feature → dev` PR | CI 없음, 코드 리뷰만 | — |
 | `dev → main` PR | GitHub Actions 전체(`ci.yml`) | CI |
 
-`.github/workflows/ci.yml` 의 트리거는 `main` 대상 `pull_request` 로만 한정된다(`branches: [main]`). `feature → dev` 에 CI 가 없다는 건 `dev` 브랜치가 검증받지 않은 코드를 받을 수 있다는 뜻이라, **로컬 검증이 유일한 방어선**이다 — 생략하면 여러 기능이 쌓인 뒤 배포 PR 에서야 CI 가 처음 돌아 어느 커밋이 깨뜨렸는지 찾는 비용이 커진다. Claude 가 작업할 때도 동일하다 — `dev` 로 올리는 PR 을 만들기 전에 `composer check` 를 실제로 실행하고 출력을 확인한 뒤 진행한다("통과할 것 같다"로 넘어가지 않는다).
+`.github/workflows/ci.yml` 의 트리거는 `main` 대상 `pull_request` 로만 한정된다(`branches: [main]`). `feature → dev` 에 CI 가 없다는 건 `dev` 브랜치가 검증받지 않은 코드를 받을 수 있다는 뜻이라, **로컬 검증이 유일한 방어선**이다 — 생략하면 여러 기능이 쌓인 뒤 배포 PR 에서야 CI 가 처음 돌아 어느 커밋이 깨뜨렸는지 찾는 비용이 커진다. Codex 가 작업할 때도 동일하다 — `dev` 로 올리는 PR 을 만들기 전에 `composer check` 를 실제로 실행하고 출력을 확인한 뒤 진행한다("통과할 것 같다"로 넘어가지 않는다).
 
 #### self-hosted 러너에서 돈다
 GitHub 호스팅 러너(`ubuntu-latest`)가 아니라 **로컬 Mac을 self-hosted 러너로 등록해서** 돈다(다른 pushwing 저장소들과 동일한 패턴). `ci.yml`·`deploy.yml` 모두 `runs-on: [self-hosted, macOS, ARM64]`.
@@ -120,8 +137,8 @@ composer check      # CS Fixer → PHPStan(L6) → PHPUnit, CI 게이트와 동�
 ```
 개발 중 빠른 피드백은 `composer test:unit`(DB 불필요, ~0.3초), 커밋 전 전체 확인은 `composer test:fast`(커버리지 제외). 마이그레이션이 필요한 검증은 `php spark migrate --all` 사용(그냥 `migrate`는 Shield `users` 테이블 누락으로 FK 실패).
 
-> **PHP 가 없는 Windows 체크아웃(`E:\claude_works\AICassa`)이라면** 코드 검증을 **별도 WSL 클론**(`~/claude-works/AICassa`, Ubuntu-24.04 — Windows 체크아웃과 별개 클론, `php`=8.5·확장 완비, dev 의존성이 `ext-sqlite3` 요구)에서 수행한다.
-> - **실행**: `wsl.exe -d Ubuntu-24.04 -- bash -lc 'cd ~/claude-works/AICassa && <명령>'`. 중첩 따옴표·`$()`·리다이렉트는 인터롭에서 깨지므로, 복잡하면 스크래치패드에 `.sh`를 쓰고 `/mnt/c/...` 경로로 실행한다.
+> **PHP 가 없는 Windows 체크아웃(`E:\claude_works\AICassa`)이라면** 코드 검증을 **별도 WSL 클론**(`~/Codex-works/AICassa`, Ubuntu-24.04 — Windows 체크아웃과 별개 클론, `php`=8.5·확장 완비, dev 의존성이 `ext-sqlite3` 요구)에서 수행한다.
+> - **실행**: `wsl.exe -d Ubuntu-24.04 -- bash -lc 'cd ~/Codex-works/AICassa && <명령>'`. 중첩 따옴표·`$()`·리다이렉트는 인터롭에서 깨지므로, 복잡하면 스크래치패드에 `.sh`를 쓰고 `/mnt/c/...` 경로로 실행한다.
 > - **동기화**: 별개 클론이므로 Windows에서 커밋·푸시한 뒤 WSL에서 `git fetch origin && git checkout <branch> && git pull` 로 맞춘 다음 검증한다. `cs-fix`가 수정한 파일은 커밋에 반드시 포함한다.
 
 ---
@@ -137,4 +154,4 @@ composer check      # CS Fixer → PHPStan(L6) → PHPUnit, CI 게이트와 동�
 | `app/Services/` | 유스케이스 단위 비즈니스 로직 (부가세·감가상각·집계 등) |
 | `app/Commands/` | Spark 커스텀 커맨드 |
 | `docs/` | 프로젝트 문서 |
-| `.claude/rules/` | 저장소 전용 상세 규칙 (위 [상세 규칙](#상세-규칙-clauderules) 참조) |
+| `.codex/rules/` | Codex용 프로젝트 규칙의 원본 문서 (참고용) |

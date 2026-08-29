@@ -74,6 +74,7 @@ final class AccountClassifierService
         string $description,
         ?string $partnerName = null,
         bool $isManufacturing = true,
+        bool $allowAiFallback = true,
     ): AccountSuggestion {
         $description = trim($description);
         $category    = $this->categoryFor($entryType);
@@ -88,7 +89,9 @@ final class AccountClassifierService
         }
 
         // 2) AI 폴백 (이력 miss 시에만)
-        return $this->fromAi($businessId, $entryType, $category, $description, $isManufacturing);
+        return $allowAiFallback
+            ? $this->fromAi($businessId, $entryType, $category, $description, $isManufacturing)
+            : AccountSuggestion::none();
     }
 
     /**

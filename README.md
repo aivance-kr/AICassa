@@ -2,6 +2,15 @@
 
 ---
 
+## 아키텍처
+
+시스템 구성과 주요 요청 흐름은 인터랙티브 다이어그램으로 확인할 수 있다.
+
+- [아키텍처 다이어그램](docs/diagrams/architecture.html) — Admin/Operator 인증 이원화, Service/Model 계층, 선택적 AI 폴백 경로
+- [시퀀스 다이어그램 — 계정과목 AI 자동분류](docs/diagrams/sequence.html) — 이력 우선 조회 → Claude 폴백 → 사용량 기록
+
+---
+
 ## 개정세법 버전 관리 (Tax Rule Versioning)
 
 세법은 매년 개정되고, 개정 내용은 원칙적으로 개정 이후 개시하는 **과세연도(귀속분)부터** 적용된다.

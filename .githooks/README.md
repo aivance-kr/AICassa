@@ -20,6 +20,8 @@ composer hooks:install  # git config core.hooksPath .githooks + 실행권한 부
 | `pre-commit` | 스테이징된 `*.php` 를 PHP CS Fixer 로 자동수정 후 재-스테이징 | CS 위반이 CI 에서야 터지는 것을 차단 |
 | `pre-push` | `composer check`(CS · PHPStan · PHPUnit) 실행, 실패 시 push 중단 | red 상태 push → CI 왕복 차단 |
 
+- `pre-push` 는 push 되는 커밋들이 `*.md`·`docs/**`·`.claude/rules/**` 만 바꾼 **문서 전용**이면 비교 대상 코드가 없으므로 `composer check` 를 자동으로 건너뛴다 — 문서 변경은 훅·CI 게이트 없이 바로 `dev` 에 push 할 수 있다.
+
 ## 긴급 우회
 
 훅을 건너뛰어야 할 때(예: WIP 브랜치 백업 push):
