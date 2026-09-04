@@ -11,28 +11,26 @@ concurrency:
 jobs:
   backend:
     name: PHP CS Fixer · PHPStan · PHPUnit (MySQL)
-    # self-hosted(macOS) 러너는 services: 도커 컨테이너를 지원하지 않는다
-    # (GitHub Actions 서비스 컨테이너는 Linux 러너 전용). 대신 MySQL을
-    # docker run 으로 직접 띄우고 잡 종료 시 정리한다.
-    runs-on: [self-hosted, macOS, ARM64]
+    # 조직용 self-hosted 러너(Linux/X64) 1대만 사용 — services: 도커 컨테이너 지원되므로
+    # (macOS 러너 시절의 docker run 수동 기동/정리 방식은 더 이상 필요 없음).
+    runs-on: [self-hosted, Linux, X64]
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: aicassa_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -proot"
+          --health-interval=2s
+          --health-timeout=5s
+          --health-retries=15
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: MySQL 컨테이너 기동
-        run: |
-          docker rm -f -v ci-mysql-${{ github.run_id }} 2>/dev/null || true
-          # 이 러너는 시스템 MySQL(mysqld)이 이미 3306을, AIFid CI 가 13306을
-          # 점유하고 있어 이 저장소 전용 포트(33306)로 띄운다.
-          docker run -d --name ci-mysql-${{ github.run_id }} \
-            -e MYSQL_ROOT_PASSWORD=root \
-            -e MYSQL_DATABASE=aicassa_test \
-            -p 33306:3306 \
-            mysql:8.0
-          for i in $(seq 1 30); do
-            docker exec ci-mysql-${{ github.run_id }} mysqladmin ping -proot --silent && break
-            sleep 2
-          done
 
       - name: Setup PHP 8.5
         uses: shivammathur/setup-php@v2
@@ -67,7 +65,7 @@ jobs:
             echo "database.tests.username = root"
             echo "database.tests.password = root"
             echo "database.tests.DBDriver = MySQLi"
-            echo "database.tests.port = 33306"
+            echo "database.tests.port = 3306"
           } >> .env
 
       - name: Prepare writable directories
@@ -81,7 +79,3 @@ jobs:
 
       - name: PHPUnit (MySQL)
         run: composer test
-
-      - name: 컨테이너 정리
-        if: always()
-        run: docker rm -f -v ci-mysql-${{ github.run_id }} 2>/dev/null || true
