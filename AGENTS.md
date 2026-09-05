@@ -124,7 +124,7 @@ GitHub 호스팅 러너(`ubuntu-latest`)가 아니라 **조직(`aivance-kr`) 레
 - **전환 계기**: 2026-07-30, `deploy.yml`(당시 `ubuntu-latest`)이 "recent account payments have failed or your spending limit needs to be increased"로 잡이 시작조차 못 하고 실패 — GitHub 결제/지출한도 문제로 호스팅 러너가 막히면 CI 뿐 아니라 배포까지 멈춘다. `ci.yml`은 이미 self-hosted 였어서 영향 없었고, `deploy.yml`도 동일하게 전환했다.
 - **러너 구성**: 조직(`aivance-kr`) 설정에서 등록한 Linux/X64 러너 1대 — 저장소마다 별도 러너를 두지 않고 이 러너 하나를 모든 워크플로가 공유한다. 러너가 1대뿐이므로 여러 저장소·워크플로의 잡이 동시에 몰려도 순차 실행된다(진짜 동시 실행 충돌 없음).
 - **MySQL**: Linux self-hosted 러너는 `services:` 도커 컨테이너를 지원한다(macOS 러너 시절엔 미지원이라 `docker run` 을 잡에서 직접 기동·정리했으나 더 이상 필요 없음) — `ci.yml` 은 표준 `services:` 블록으로 MySQL 을 띄운다.
-- **포트**: 러너가 1대뿐이라 잡이 순차 실행되므로 포트 충돌 우려가 없다 — 표준 포트 **3306** 을 그대로 쓴다(과거 macOS 러너 시절 시스템 `mysqld`·다른 저장소 CI 와의 충돌을 피하려 썼던 33306 오버라이드는 제거).
+- **포트**: `services:` 는 지원되지만 조직 러너의 시스템 `mysqld` 가 3306을 사용한다. AICassa CI는 호스트 **33306 → 컨테이너 3306**으로 매핑하고 `database.tests.port`도 33306으로 맞춘다.
 - **배포(`deploy.yml`)**: SSH 배포 스크립트 자체는 원격 운영 서버에서 실행되므로 러너 종류와 무관하다 — `appleboy/ssh-action`(Docker 컨테이너 액션)이 러너 호스트의 Docker 위에서 실행되고 그 안에서 운영 서버로 SSH 접속한다.
 - **호스팅 러너로 되돌리려면**: `runs-on` 을 `ubuntu-latest` 로 바꾸면 된다(MySQL `services:` 블록·포트는 그대로 유지 가능). 단, GitHub 결제 문제가 해결되지 않으면 호스팅 러너로는 잡이 다시 시작되지 않는다.
 
