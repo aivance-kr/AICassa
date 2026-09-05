@@ -14,84 +14,7 @@ concurrency:
 
 jobs:
   quality:
-    name: PHP 품질 게이트 (CS · PHPStan · PHPUnit)
-    runs-on: [self-hosted, Linux, X64]
-    env:
-      DEBIAN_FRONTEND: noninteractive
-      NEEDRESTART_MODE: a
-
-    services:
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: aicassa_test
-        ports:
-          # 조직 러너의 시스템 MySQL이 3306을 사용하므로 AICassa 전용 포트를 쓴다.
-          - 33306:3306
-        options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
-          --health-interval=2s
-          --health-timeout=5s
-          --health-retries=30
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: PHP 설치 (apt, PPA 미사용)
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends \
-            composer \
-            php-cli \
-            php-curl \
-            php-intl \
-            php-mbstring \
-            php-mysql \
-            php-xml \
-            php-zip
-          php -v
-          composer --version
-
-      - name: Composer 캐시
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/composer
-          key: composer-${{ hashFiles('**/composer.lock') }}
-          restore-keys: composer-
-
-      - name: 의존성 설치
-        run: composer install --no-interaction --no-progress --prefer-dist
-
-      - name: 테스트 환경 구성
-        run: |
-          cp env .env
-          {
-            echo "CI_ENVIRONMENT = testing"
-            echo "JWT_SECRET = ci-test-secret-key-should-be-32-characters-min"
-            echo "database.tests.hostname = 127.0.0.1"
-            echo "database.tests.database = aicassa_test"
-            echo "database.tests.username = root"
-            echo "database.tests.password = root"
-            echo "database.tests.DBDriver = MySQLi"
-            echo "database.tests.port = 33306"
-          } >> .env
-
-      - name: writable 디렉터리 준비
-        run: mkdir -p writable/cache writable/logs writable/session writable/uploads writable/debugbar build/logs
-
-      - name: PHP CS Fixer
-        run: composer cs
-
-      - name: PHPStan (level 6)
-        run: composer analyse
-
-      - name: PHPUnit (MySQL)
-        run: composer test
-
-  coverage:
-    name: 커버리지 리포트
+    name: PHP 품질 게이트 (CS · PHPStan · PHPUnit · Coverage)
     runs-on: [self-hosted, Linux, X64]
     env:
       DEBIAN_FRONTEND: noninteractive
@@ -140,7 +63,7 @@ jobs:
           key: composer-${{ hashFiles('**/composer.lock') }}
           restore-keys: composer-
 
-      - name: 의존성 설치
+      - name: 의존성 설치 (1회)
         run: composer install --no-interaction --no-progress --prefer-dist
 
       - name: 테스트 환경 구성
@@ -160,7 +83,13 @@ jobs:
       - name: writable 디렉터리 준비
         run: mkdir -p writable/cache writable/logs writable/session writable/uploads writable/debugbar build/logs
 
-      - name: PHPUnit (커버리지)
+      - name: PHP CS Fixer
+        run: composer cs
+
+      - name: PHPStan (level 6)
+        run: composer analyse
+
+      - name: PHPUnit 및 커버리지 (통합 실행)
         env:
           XDEBUG_MODE: coverage
         run: |
