@@ -119,14 +119,14 @@ feature/*  ──[로컬 검증: composer check]──▶  dev  ──[PR + CI]�
 `.github/workflows/ci.yml` 의 트리거는 `main` 대상 `pull_request` 로만 한정된다(`branches: [main]`). `feature → dev` 에 CI 가 없다는 건 `dev` 브랜치가 검증받지 않은 코드를 받을 수 있다는 뜻이라, **로컬 검증이 유일한 방어선**이다 — 생략하면 여러 기능이 쌓인 뒤 배포 PR 에서야 CI 가 처음 돌아 어느 커밋이 깨뜨렸는지 찾는 비용이 커진다. Codex 가 작업할 때도 동일하다 — `dev` 로 올리는 PR 을 만들기 전에 `composer check` 를 실제로 실행하고 출력을 확인한 뒤 진행한다("통과할 것 같다"로 넘어가지 않는다).
 
 #### self-hosted 러너에서 돈다
-GitHub 호스팅 러너(`ubuntu-latest`)가 아니라 **로컬 Mac을 self-hosted 러너로 등록해서** 돈다(다른 pushwing 저장소들과 동일한 패턴). `ci.yml`·`deploy.yml` 모두 `runs-on: [self-hosted, macOS, ARM64]`.
+GitHub 호스팅 러너(`ubuntu-latest`)가 아니라 **조직(`aivance-kr`) 레벨 self-hosted 러너 1대**를 등록해서 돈다 — 저장소별 러너가 아니라 조직의 모든 저장소가 이 러너 하나를 공유한다. `ci.yml`·`deploy.yml` 모두 `runs-on: [self-hosted, Linux, X64]`.
 
 - **전환 계기**: 2026-07-30, `deploy.yml`(당시 `ubuntu-latest`)이 "recent account payments have failed or your spending limit needs to be increased"로 잡이 시작조차 못 하고 실패 — GitHub 결제/지출한도 문제로 호스팅 러너가 막히면 CI 뿐 아니라 배포까지 멈춘다. `ci.yml`은 이미 self-hosted 였어서 영향 없었고, `deploy.yml`도 동일하게 전환했다.
-- **러너 위치**: `~/actions-runners/AICassa`(저장소 밖). `aicassa-mac-local-runner` 라는 이름으로 launchd 서비스(`actions.runner.pushwing-AICassa.aicassa-mac-local-runner`)로 상시 등록돼 있다 — Mac이 켜져 있으면 자동으로 리스닝한다. 결제 문제로 호스팅 러너가 막혀도 self-hosted 러너는 영향받지 않는다.
-- **MySQL**: self-hosted **macOS** 러너는 `services:` 도커 컨테이너를 지원하지 않는다(Linux 러너 전용 기능). 대신 잡에서 `docker run` 으로 직접 기동하고 `if: always()` 스텝으로 정리한다.
-- **포트**: 이 Mac은 이미 시스템 `mysqld`(3306)를 상시 띄워두고 있고 다른 저장소(AIFid) CI 가 13306을 쓰므로, AICassa CI 전용 컨테이너는 **33306** 포트를 쓴다(`database.tests.port` 로 오버라이드).
-- **배포(`deploy.yml`)**: SSH 배포 스크립트 자체는 원격 운영 서버에서 실행되므로 러너 종류와 무관하다 — `runs-on` 만 self-hosted 로 바뀌었을 뿐, `appleboy/ssh-action`(Docker 컨테이너 액션)이 이 Mac의 Docker Desktop 위에서 실행되고 그 안에서 운영 서버로 SSH 접속한다.
-- **호스팅 러너로 되돌리려면**: `runs-on` 을 `ubuntu-latest` 로 바꾸고 MySQL을 다시 `services:` 블록으로 되돌리면 된다(포트도 표준값 3306으로 원복 가능). 단, GitHub 결제 문제가 해결되지 않으면 호스팅 러너로는 잡이 다시 시작되지 않는다.
+- **러너 구성**: 조직(`aivance-kr`) 설정에서 등록한 Linux/X64 러너 1대 — 저장소마다 별도 러너를 두지 않고 이 러너 하나를 모든 워크플로가 공유한다. 러너가 1대뿐이므로 여러 저장소·워크플로의 잡이 동시에 몰려도 순차 실행된다(진짜 동시 실행 충돌 없음).
+- **MySQL**: Linux self-hosted 러너는 `services:` 도커 컨테이너를 지원한다(macOS 러너 시절엔 미지원이라 `docker run` 을 잡에서 직접 기동·정리했으나 더 이상 필요 없음) — `ci.yml` 은 표준 `services:` 블록으로 MySQL 을 띄운다.
+- **포트**: `services:` 는 지원되지만 조직 러너의 시스템 `mysqld` 가 3306을 사용한다. AICassa CI는 호스트 **33306 → 컨테이너 3306**으로 매핑하고 `database.tests.port`도 33306으로 맞춘다.
+- **배포(`deploy.yml`)**: SSH 배포 스크립트 자체는 원격 운영 서버에서 실행되므로 러너 종류와 무관하다 — `appleboy/ssh-action`(Docker 컨테이너 액션)이 러너 호스트의 Docker 위에서 실행되고 그 안에서 운영 서버로 SSH 접속한다.
+- **호스팅 러너로 되돌리려면**: `runs-on` 을 `ubuntu-latest` 로 바꾸면 된다(MySQL `services:` 블록·포트는 그대로 유지 가능). 단, GitHub 결제 문제가 해결되지 않으면 호스팅 러너로는 잡이 다시 시작되지 않는다.
 
 `composer check`(CS·PHPStan·PHPUnit)를 **PHP·Composer 가 있는 환경에서 push 전에 반드시 로컬 실행**한다. 이 단계를 건너뛰면 CS/PHPStan/PHPUnit 실패를 CI에서야 발견해 커밋 왕복이 생긴다. `.githooks/pre-push` 를 활성화하면(`composer hooks:install`) push 대상 브랜치와 무관하게 자동으로 강제된다(feature 브랜치 포함 — 이 저장소는 참고 정책과 달리 feature 푸시도 훅으로 게이트한다).
 
