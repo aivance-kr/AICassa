@@ -74,11 +74,20 @@ jobs:
           docker rm -f ci-mysql-${{ github.run_id }} 2>/dev/null || true
           docker network create ci-net-${{ github.run_id }}
           docker network connect ci-net-${{ github.run_id }} "$(hostname)"
+          # 테스트 DB 는 컨테이너 종료와 함께 사라지는 휘발성 데이터라 durability 가 필요 없다.
+          # 기본 설정이면 InnoDB 체크포인트 플러시가 redo log 소진 시점에 몰려 테스트 도중
+          # 일부 구간이 통째로 느려지는(수백 배) 스톨이 생긴다(AILign 실측) — tmpfs 로
+          # 디스크 I/O 를 없애고 커밋마다의 동기 flush 를 꺼서 막는다.
           docker run -d --name ci-mysql-${{ github.run_id }} \
             -e MYSQL_ROOT_PASSWORD=root \
             -e MYSQL_DATABASE=aicassa_test \
             --network ci-net-${{ github.run_id }} \
-            mysql:8.0
+            --tmpfs /var/lib/mysql \
+            mysql:8.0 \
+            --innodb-flush-log-at-trx-commit=0 \
+            --innodb-flush-method=nosync \
+            --sync-binlog=0 \
+            --innodb-redo-log-capacity=536870912
           # mysqladmin ping 은 초기화 중 임시 서버 단계에서도 성공하므로
           # 실제 인증 쿼리가 성공할 때까지 재시도한다.
           ready=0
