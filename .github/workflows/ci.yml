@@ -43,14 +43,14 @@ jobs:
           fi
           # 확장은 지금 PATH 의 php 버전에 맞춰 버전 명시 패키지로 설치한다
           # (버전 없는 php-intl 등은 다른 버전을 끌어와 쓰는 php 에 안 붙을 수 있다).
-          # composer.lock 이 sqlite3 를 요구한다(codeigniter/phpstan-codeigniter).
+          # composer.lock 이 sqlite3(codeigniter/phpstan-codeigniter)·gd(phpoffice/phpspreadsheet)를 요구한다.
           V="$(php -r 'echo PHP_MAJOR_VERSION . "." . PHP_MINOR_VERSION;')"
           $APT install -y --no-install-recommends \
             "php${V}-mbstring" "php${V}-intl" "php${V}-mysql" "php${V}-xml" \
-            "php${V}-curl" "php${V}-zip" "php${V}-sqlite3" "php${V}-xdebug"
+            "php${V}-curl" "php${V}-zip" "php${V}-sqlite3" "php${V}-gd" "php${V}-xdebug"
           command -v composer >/dev/null || $APT install -y --no-install-recommends composer
           php -v
-          for ext in mysqli xdebug intl mbstring sqlite3; do
+          for ext in mysqli xdebug intl mbstring sqlite3 gd; do
             php -m | grep -qix "$ext" || { echo "::error::PHP 확장 $ext 가 없습니다"; exit 1; }
           done
           composer --version
