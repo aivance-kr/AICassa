@@ -13,7 +13,7 @@ jobs:
     name: PHP CS Fixer · PHPStan · PHPUnit (MySQL)
     # 조직용 self-hosted 러너(Linux/X64) 1대만 사용 — services: 도커 컨테이너 지원되므로
     # (macOS 러너 시절의 docker run 수동 기동/정리 방식은 더 이상 필요 없음).
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: [self-hosted, Linux, X64, docker]
 
     services:
       mysql:
