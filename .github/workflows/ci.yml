@@ -79,9 +79,9 @@ jobs:
           docker network create ci-net-${{ github.run_id }}
           docker network connect ci-net-${{ github.run_id }} "$(hostname)"
           # 테스트 DB 는 컨테이너 종료와 함께 사라지는 휘발성 데이터라 durability 가 필요 없다.
-          # 기본 설정이면 InnoDB 체크포인트 플러시가 redo log 소진 시점에 몰려 일부 구간이
-          # 통째로 느려지는 스톨이 생긴다(AILign 실측) — tmpfs 로 디스크 I/O 를 없애고
-          # 커밋마다의 동기 flush 를 끈다.
+          # 기본 설정이면 InnoDB 체크포인트 플러시가 redo log 소진 시점에 몰려 테스트 도중
+          # 일부 구간이 통째로 느려지는(수백 배) 스톨이 생긴다(AILign 실측) — tmpfs 로
+          # 디스크 I/O 를 없애고 커밋마다의 동기 flush 를 꺼서 막는다.
           docker run -d --name ci-mysql-${{ github.run_id }} \
             -e MYSQL_ROOT_PASSWORD=root \
             -e MYSQL_DATABASE=aicassa_test \
