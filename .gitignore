@@ -130,3 +130,6 @@ _modules/*
 
 # PHP CS Fixer 캐시
 /.php-cs-fixer.cache
+
+# paratest 워커별 격리 디렉터리 (생성물)
+writable/paratest/
