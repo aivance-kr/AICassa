@@ -24,21 +24,35 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: PHP 설치 및 Xdebug 활성화 (apt, PPA 미사용)
+      - name: PHP 설치 및 Xdebug 활성화 (apt)
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends \
-            composer \
-            php-cli \
-            php-curl \
-            php-intl \
-            php-mbstring \
-            php-mysql \
-            php-xml \
-            php-xdebug \
-            php-zip
+          APT="sudo apt-get -o DPkg::Lock::Timeout=300"
+          $APT update -qq
+          command -v php >/dev/null || $APT install -y --no-install-recommends php-cli
+          # 러너마다 기본 PHP 가 다르다. 네이티브 Ubuntu 24.04 러너(runner-03)는
+          # 8.3.6 이라 composer.json(^8.4) 요구를 못 채워 composer install 이 실패했고,
+          # ondrej PPA 가 이미 붙은 러너(runner-01)는 8.5 가 설치됐다. 8.4 미만이면
+          # PPA 로 8.5 를 설치하고 기본 php 로 지정한다. (Ubuntu 26.04 러너는 네이티브가
+          # 8.5 라 이 분기를 타지 않는다.)
+          if ! php -r 'exit(version_compare(PHP_VERSION, "8.4", ">=") ? 0 : 1);'; then
+            $APT install -y --no-install-recommends software-properties-common
+            sudo add-apt-repository -y ppa:ondrej/php
+            $APT update -qq
+            $APT install -y --no-install-recommends php8.5-cli
+            sudo update-alternatives --set php /usr/bin/php8.5
+          fi
+          # 확장은 지금 PATH 의 php 버전에 맞춰 버전 명시 패키지로 설치한다
+          # (버전 없는 php-intl 등은 다른 버전을 끌어와 쓰는 php 에 안 붙을 수 있다).
+          # composer.lock 이 sqlite3 를 요구한다(codeigniter/phpstan-codeigniter).
+          V="$(php -r 'echo PHP_MAJOR_VERSION . "." . PHP_MINOR_VERSION;')"
+          $APT install -y --no-install-recommends \
+            "php${V}-mbstring" "php${V}-intl" "php${V}-mysql" "php${V}-xml" \
+            "php${V}-curl" "php${V}-zip" "php${V}-sqlite3" "php${V}-xdebug"
+          command -v composer >/dev/null || $APT install -y --no-install-recommends composer
           php -v
-          php -m | grep -E '^(mysqli|xdebug)$'
+          for ext in mysqli xdebug intl mbstring sqlite3; do
+            php -m | grep -qix "$ext" || { echo "::error::PHP 확장 $ext 가 없습니다"; exit 1; }
+          done
           composer --version
 
       - name: Composer 캐시
