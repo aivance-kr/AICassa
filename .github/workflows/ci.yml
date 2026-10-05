@@ -15,45 +15,44 @@ concurrency:
 jobs:
   quality:
     name: PHP 품질 게이트 (CS · PHPStan · PHPUnit · Coverage)
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: [self-hosted, Linux, X64, docker]
     env:
       DEBIAN_FRONTEND: noninteractive
       NEEDRESTART_MODE: a
-
-    services:
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: aicassa_test
-        ports:
-          # 조직 러너의 시스템 MySQL이 3306을 사용하므로 AICassa 전용 포트를 쓴다.
-          - 33306:3306
-        options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
-          --health-interval=2s
-          --health-timeout=5s
-          --health-retries=30
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: PHP 설치 및 Xdebug 활성화 (apt, PPA 미사용)
+      - name: PHP 설치 및 Xdebug 활성화 (apt)
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends \
-            composer \
-            php-cli \
-            php-curl \
-            php-intl \
-            php-mbstring \
-            php-mysql \
-            php-xml \
-            php-xdebug \
-            php-zip
+          APT="sudo apt-get -o DPkg::Lock::Timeout=300"
+          $APT update -qq
+          command -v php >/dev/null || $APT install -y --no-install-recommends php-cli
+          # 러너마다 기본 PHP 가 다르다. 네이티브 Ubuntu 24.04 러너(runner-03)는
+          # 8.3.6 이라 composer.json(^8.4) 요구를 못 채워 composer install 이 실패했고,
+          # ondrej PPA 가 이미 붙은 러너(runner-01)는 8.5 가 설치됐다. 8.4 미만이면
+          # PPA 로 8.5 를 설치하고 기본 php 로 지정한다. (Ubuntu 26.04 러너는 네이티브가
+          # 8.5 라 이 분기를 타지 않는다.)
+          if ! php -r 'exit(version_compare(PHP_VERSION, "8.4", ">=") ? 0 : 1);'; then
+            $APT install -y --no-install-recommends software-properties-common
+            sudo add-apt-repository -y ppa:ondrej/php
+            $APT update -qq
+            $APT install -y --no-install-recommends php8.5-cli
+            sudo update-alternatives --set php /usr/bin/php8.5
+          fi
+          # 확장은 지금 PATH 의 php 버전에 맞춰 버전 명시 패키지로 설치한다
+          # (버전 없는 php-intl 등은 다른 버전을 끌어와 쓰는 php 에 안 붙을 수 있다).
+          # composer.lock 이 sqlite3(codeigniter/phpstan-codeigniter)·gd(phpoffice/phpspreadsheet)를 요구한다.
+          V="$(php -r 'echo PHP_MAJOR_VERSION . "." . PHP_MINOR_VERSION;')"
+          $APT install -y --no-install-recommends \
+            "php${V}-mbstring" "php${V}-intl" "php${V}-mysql" "php${V}-xml" \
+            "php${V}-curl" "php${V}-zip" "php${V}-sqlite3" "php${V}-gd" "php${V}-xdebug"
+          command -v composer >/dev/null || $APT install -y --no-install-recommends composer
           php -v
-          php -m | grep -E '^(mysqli|xdebug)$'
+          for ext in mysqli xdebug intl mbstring sqlite3 gd; do
+            php -m | grep -qix "$ext" || { echo "::error::PHP 확장 $ext 가 없습니다"; exit 1; }
+          done
           composer --version
 
       - name: Composer 캐시
@@ -64,7 +63,47 @@ jobs:
           restore-keys: composer-
 
       - name: 의존성 설치 (1회)
-        run: composer install --no-interaction --no-progress --prefer-dist
+        # --ignore-platform-req=php: brianium/paratest 7.4.9(현재 phpunit code-coverage
+        # 10.x 와 맞는 마지막 버전)는 PHP 8.5 를 아직 지원 선언하지 않았다(메타데이터만
+        # ~8.4 까지, 실제 동작은 확인됨) — 이 플래그 없이는 lock 플랫폼 검증에서 막힌다.
+        # paratest 가 8.5 를 공식 지원하면 제거할 것.
+        run: composer install --no-interaction --no-progress --prefer-dist --ignore-platform-req=php
+
+      - name: MySQL 컨테이너 기동
+        run: |
+          # 러너가 도커 컨테이너라 호스트에 게시한 포트(127.0.0.1)에는 닿지 못한다
+          # ("Connection refused" 실측). 실행별 전용 네트워크에 러너와 MySQL 을
+          # 같이 붙이고 컨테이너 이름으로 접속한다 — 호스트 포트를 쓰지 않으므로
+          # 같은 호스트의 동시 잡끼리 포트가 겹칠 일도 없다.
+          docker rm -f ci-mysql-${{ github.run_id }} 2>/dev/null || true
+          docker network create ci-net-${{ github.run_id }}
+          docker network connect ci-net-${{ github.run_id }} "$(hostname)"
+          # 테스트 DB 는 컨테이너 종료와 함께 사라지는 휘발성 데이터라 durability 가 필요 없다.
+          # 기본 설정이면 InnoDB 체크포인트 플러시가 redo log 소진 시점에 몰려 테스트 도중
+          # 일부 구간이 통째로 느려지는(수백 배) 스톨이 생긴다(AILign 실측) — tmpfs 로
+          # 디스크 I/O 를 없애고 커밋마다의 동기 flush 를 꺼서 막는다.
+          docker run -d --name ci-mysql-${{ github.run_id }} \
+            -e MYSQL_ROOT_PASSWORD=root \
+            -e MYSQL_DATABASE=aicassa_test \
+            --network ci-net-${{ github.run_id }} \
+            --tmpfs /var/lib/mysql \
+            mysql:8.0 \
+            --innodb-flush-log-at-trx-commit=0 \
+            --innodb-flush-method=nosync \
+            --sync-binlog=0 \
+            --innodb-redo-log-capacity=536870912
+          # mysqladmin ping 은 초기화 중 임시 서버 단계에서도 성공하므로
+          # 실제 인증 쿼리가 성공할 때까지 재시도한다.
+          ready=0
+          for i in $(seq 1 60); do
+            docker exec ci-mysql-${{ github.run_id }} mysql -uroot -proot -e "SELECT 1" aicassa_test >/dev/null 2>&1 && { ready=1; break; }
+            sleep 1
+          done
+          if [ "$ready" != "1" ]; then
+            echo "::error::MySQL 이 60초 안에 준비되지 않았습니다"
+            docker logs ci-mysql-${{ github.run_id }} 2>&1 | tail -20
+            exit 1
+          fi
 
       - name: 테스트 환경 구성
         run: |
@@ -72,12 +111,12 @@ jobs:
           {
             echo "CI_ENVIRONMENT = testing"
             echo "JWT_SECRET = ci-test-secret-key-should-be-32-characters-min"
-            echo "database.tests.hostname = 127.0.0.1"
+            echo "database.tests.hostname = ci-mysql-${{ github.run_id }}"
             echo "database.tests.database = aicassa_test"
             echo "database.tests.username = root"
             echo "database.tests.password = root"
             echo "database.tests.DBDriver = MySQLi"
-            echo "database.tests.port = 33306"
+            echo "database.tests.port = 3306"
           } >> .env
 
       - name: writable 디렉터리 준비
@@ -94,7 +133,11 @@ jobs:
           XDEBUG_MODE: coverage
         run: |
           mkdir -p build
-          vendor/bin/phpunit \
+          # 직렬 실행은 MySQL 설정을 바꿔도 느렸다 — 남은 비용은 DB I/O 가 아니라 프레임워크
+          # 부팅·쿼리량의 CPU 비용이라 paratest 로 코어를 실제로 쓴다. 워커별 WRITEPATH·
+          # 테스트 DB(aicassa_test_{TOKEN})는 tests/_support/bootstrap.php 가 격리한다.
+          vendor/bin/paratest \
+            --processes=4 \
             --coverage-text=build/coverage.txt \
             --coverage-cobertura=build/cobertura.xml
 
@@ -111,3 +154,11 @@ jobs:
             fi
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: 컨테이너 정리
+        if: always()
+        # -v 를 빼면 /var/lib/mysql 익명 볼륨이 남아 러너 디스크를 채운다.
+        run: |
+          docker rm -f -v ci-mysql-${{ github.run_id }} 2>/dev/null || true
+          docker network disconnect -f ci-net-${{ github.run_id }} "$(hostname)" 2>/dev/null || true
+          docker network rm ci-net-${{ github.run_id }} 2>/dev/null || true

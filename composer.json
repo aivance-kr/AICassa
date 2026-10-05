@@ -16,6 +16,7 @@
         "phpoffice/phpspreadsheet": "^5.8"
     },
     "require-dev": {
+        "brianium/paratest": "7.4.9",
         "codeigniter/coding-standard": "^1.9",
         "codeigniter/phpstan-codeigniter": "^2.1",
         "fakerphp/faker": "^1.9",
@@ -45,6 +46,7 @@
     },
     "scripts": {
         "test": "phpunit",
+        "test:parallel": "paratest --processes=4",
         "test:fast": "phpunit --no-coverage",
         "test:unit": "phpunit --testsuite unit --no-coverage",
         "analyse": "phpstan analyse --memory-limit=512M",
@@ -64,6 +66,7 @@
     },
     "scripts-descriptions": {
         "test:fast": "PHPUnit 전체(커버리지 제외) — 커밋 전 빠른 확인",
+        "test:parallel": "paratest 4프로세스 병렬 — 워커별 WRITEPATH·테스트 DB 격리(tests/_support/bootstrap.php)",
         "test:unit": "DB 불필요 유닛 스위트만 (~0.3초) — 개발 중 즉시 피드백",
         "check:fast": "CS · PHPStan · 유닛 테스트 — 빠른 로컬 게이트(feature 테스트 제외)",
         "hooks:install": "Git 훅(pre-commit cs-fix · pre-push composer check) 활성화 — 최초 1회"
